@@ -27,12 +27,14 @@ function getEmployeesByLocation(location) {
   return EMPLOYEES.filter(e => e.location === location);
 }
 
-function generateTaskId() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-  const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  return `TASK-${datePart}-${timePart}`;
+async function generateTaskId() {
+  const { data } = await db
+    .from('it_solutions_tasks')
+    .select('task_id')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const last = data && data.length ? parseInt(data[0].task_id, 10) : 0;
+  return String((isNaN(last) ? 0 : last) + 1);
 }
 
 function formatDateTime(date) {

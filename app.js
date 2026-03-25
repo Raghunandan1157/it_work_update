@@ -611,11 +611,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     <div style="margin-top:10px"><div class="detail-label">Solution</div><div class="detail-value" style="margin-top:3px">${esc(fSolution.value)}</div></div>${desc}`;
   }
 
-  function buildTaskFromForm() {
-    return { taskId: state.editingTaskId || generateTaskId(), timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
+  async function buildTaskFromForm() {
+    const taskId = state.editingTaskId || await generateTaskId();
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
   async function handleSave() {
-    const d = buildTaskFromForm(); saveIssueToHistory(d.issueDescription);
+    const d = await buildTaskFromForm(); saveIssueToHistory(d.issueDescription);
     try {
       if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated.', 'success'); }
       else { await DataStore.add(d); showToast('Saved.', 'success'); }
@@ -624,7 +625,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   async function handleComplete() {
     showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
-      const d = buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); saveIssueToHistory(d.issueDescription);
+      const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); saveIssueToHistory(d.issueDescription);
       try {
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
       } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
