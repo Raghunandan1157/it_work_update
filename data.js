@@ -27,6 +27,33 @@ function getEmployeesByLocation(location) {
   return EMPLOYEES.filter(e => e.location === location);
 }
 
+// Issue history (autocomplete from DB)
+const IssueHistory = {
+  async get(userId) {
+    const { data } = await db
+      .from('it_solutions_issue_history')
+      .select('issue_text')
+      .eq('user_id', userId)
+      .order('used_at', { ascending: false })
+      .limit(100);
+    return data ? data.map(r => r.issue_text) : [];
+  },
+
+  async save(userId, text) {
+    if (!text || !text.trim()) return;
+    const trimmed = text.trim();
+    // Remove old duplicate if exists, then insert fresh
+    await db
+      .from('it_solutions_issue_history')
+      .delete()
+      .eq('user_id', userId)
+      .ilike('issue_text', trimmed);
+    await db
+      .from('it_solutions_issue_history')
+      .insert({ user_id: userId, issue_text: trimmed });
+  }
+};
+
 async function generateTaskId() {
   const { data } = await db
     .from('it_solutions_tasks')

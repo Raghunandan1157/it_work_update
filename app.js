@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.requireAuth()) return;
 
-  const ISSUE_HISTORY_KEY = 'nlpl_issue_history';
+  let issueHistoryCache = [];
   const TOTAL_STEPS = 6;
   function $(id) { return document.getElementById(id); }
 
@@ -665,17 +665,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Autocomplete
-  function getIssueHistory() { try { return JSON.parse(localStorage.getItem(ISSUE_HISTORY_KEY)) || []; } catch { return []; } }
-  function saveIssueToHistory(text) {
-    if (!text || !text.trim()) return;
-    let h = getIssueHistory().filter(x => x.toLowerCase() !== text.trim().toLowerCase());
-    h.unshift(text.trim()); if (h.length > 100) h = h.slice(0, 100);
-    localStorage.setItem(ISSUE_HISTORY_KEY, JSON.stringify(h));
-  }
+  // Load issue history from DB into cache
+  issueHistoryCache = await IssueHistory.get(user.id);
+
   fIssueDesc.addEventListener('input', () => {
     const val = fIssueDesc.value.trim().toLowerCase();
     if (!val) { issueAutocomplete.classList.add('hidden'); return; }
-    const m = getIssueHistory().filter(h => h.toLowerCase().includes(val));
+    const m = issueHistoryCache.filter(h => h.toLowerCase().includes(val));
     if (!m.length) { issueAutocomplete.classList.add('hidden'); return; }
     issueAutocomplete.innerHTML = m.slice(0, 8).map(x => `<div class="autocomplete-item">${esc(x)}</div>`).join('');
     issueAutocomplete.classList.remove('hidden');
@@ -767,7 +763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
   async function handleSave() {
-    const d = await buildTaskFromForm(); saveIssueToHistory(d.issueDescription);
+    const d = await buildTaskFromForm(); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
     try {
       if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated.', 'success'); }
       else { await DataStore.add(d); showToast('Saved.', 'success'); }
@@ -776,7 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   async function handleComplete() {
     showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
-      const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); saveIssueToHistory(d.issueDescription);
+      const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
       try {
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
       } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
