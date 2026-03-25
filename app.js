@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   fab.addEventListener('click', openAddWizard);
   modalClose.addEventListener('click', closeModal);
   btnCancel.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+  // Do not close modal on backdrop click — user might lose data
   btnNext.addEventListener('click', () => { if (validateStep(state.wizardStep)) goToStep(state.wizardStep + 1); });
   btnPrev.addEventListener('click', () => { if (state.wizardStep > 1) goToStep(state.wizardStep - 1); });
   stepperBar.querySelectorAll('.stepper-step').forEach(el => {
@@ -735,7 +735,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('editClose').addEventListener('click', closeEdit);
   $('editCancelBtn').addEventListener('click', closeEdit);
-  editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEdit(); });
+  // Do not close edit sheet on backdrop click — user might lose data
 
   function closeEdit() { editOverlay.classList.remove('open'); document.body.style.overflow = ''; }
 
