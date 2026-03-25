@@ -748,6 +748,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   fSolution.addEventListener('input', () => { const w = countWords(fSolution.value); solutionWordCount.textContent = w; solutionWordCount.parentElement.style.color = w > 50 ? 'var(--danger)' : 'var(--text-muted)'; });
   fDetailedDesc.addEventListener('input', () => { const w = countWords(fDetailedDesc.value); descWordCount.textContent = w; descWordCount.parentElement.style.color = w === 0 ? 'var(--text-muted)' : (w >= 500 && w <= 1000 ? 'var(--success)' : 'var(--warning)'); });
 
+  // Amount fields — clear "0" on focus so user can type directly
+  [fAmount, edAmount].forEach(el => {
+    el.addEventListener('focus', () => { if (el.value === '0' || el.value === '0.00') el.value = ''; });
+    el.addEventListener('blur', () => { if (!el.value) el.value = 0; });
+  });
+
   // Wizard
   fab.addEventListener('click', openAddWizard);
   modalClose.addEventListener('click', closeModal);
