@@ -659,7 +659,7 @@ select.form-control { cursor: pointer; }
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 720px;
-  height: 85vh;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   transform: translateY(30px) scale(0.96);
@@ -850,7 +850,7 @@ select.form-control[size] {
   .login-card { padding: 28px 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .task-grid { grid-template-columns: 1fr; }
-  .modal { height: 95vh; border-radius: var(--radius); margin: 4px; }
+  .modal { max-height: 95vh; border-radius: var(--radius); margin: 4px; }
   .modal-header, .modal-body, .modal-footer { padding-left: 14px; padding-right: 14px; }
   .modal-footer { gap: 6px; }
   .modal-footer .btn { padding: 8px 12px; font-size: 0.8rem; }
