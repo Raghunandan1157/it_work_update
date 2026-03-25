@@ -160,12 +160,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       });
 
-      // Sidebar stats
+      // Sidebar stats (clickable)
       $('adminSidebarStats').innerHTML = `
-        <div class="admin-sidebar-stat-row"><span>📋 Total</span><span class="admin-sidebar-stat-val">${stats.total}</span></div>
-        <div class="admin-sidebar-stat-row"><span>⏳ In Progress</span><span class="admin-sidebar-stat-val">${stats.inProgress}</span></div>
-        <div class="admin-sidebar-stat-row"><span>✅ Completed</span><span class="admin-sidebar-stat-val">${stats.completed}</span></div>
+        <div class="admin-sidebar-stat-row clickable" data-sidebar-status="all"><span>📋 Total</span><span class="admin-sidebar-stat-val">${stats.total}</span></div>
+        <div class="admin-sidebar-stat-row clickable" data-sidebar-status="inprogress"><span>⏳ In Progress</span><span class="admin-sidebar-stat-val">${stats.inProgress}</span></div>
+        <div class="admin-sidebar-stat-row clickable" data-sidebar-status="completed"><span>✅ Completed</span><span class="admin-sidebar-stat-val">${stats.completed}</span></div>
       `;
+      $('adminSidebarStats').querySelectorAll('[data-sidebar-status]').forEach(row => {
+        row.addEventListener('click', async () => {
+          reportStatusFilter = row.dataset.sidebarStatus;
+          selectedStaffId = '';
+          colFilters.date = ''; colFilters.branch = ''; colFilters.issueType = '';
+          document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
+          document.querySelector('[data-admin-tab="reports"]').classList.add('active');
+          adminTab = 'reports';
+          $('adminOverview').classList.add('hidden');
+          $('adminReports').classList.remove('hidden');
+          $('adminDuration').classList.add('hidden');
+          $('staffSelector').innerHTML = '';
+          await renderStaffSelector();
+          await renderReport();
+          sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show');
+        });
+      });
     }
 
     // ─── REPORTS ──────────────────────────────────────────────────────────────

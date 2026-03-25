@@ -1257,6 +1257,7 @@ select.form-control[size] {
 }
 .admin-sidebar-stat-row:last-child { border-bottom: none; }
 .admin-sidebar-stat-row:hover { background: rgba(255,255,255,0.04); }
+.admin-sidebar-stat-row.clickable { cursor: pointer; }
 .admin-sidebar-stat-val { font-weight: 700; color: #e2e8f0; font-size: 0.9rem; }
 .sidebar.collapsed .admin-sidebar-stats { padding: 4px 0; }
 .sidebar.collapsed .admin-sidebar-stat-row { flex-direction: column; gap: 2px; padding: 6px 4px; text-align: center; font-size: 0.65rem; }
