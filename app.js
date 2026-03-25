@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         t.branch,
         t.hoOrCo,
         t.issueType,
-        '"' + (t.issueDescription || '').replace(/"/g, '""') + '"',
+        '"' + (displayIssue(t) || '').replace(/"/g, '""') + '"',
         t.completed ? 'Completed' : 'In Progress',
         t.amount || 0
       ].join(','));
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td>${esc(t.branch)}</td>
           <td><span class="badge ${hocoCls}">${esc(t.hoOrCo)}</span></td>
           <td><span class="badge ${typeCls}">${esc(t.issueType)}</span></td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.issueDescription)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(displayIssue(t))}</td>
           <td><span class="badge ${statusCls}">${statusTxt}</span></td>
           <td>₹${(t.amount || 0).toLocaleString('en-IN')}</td>
         </tr>`;
@@ -709,20 +709,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     else fIssueType.value = '';
   }
 
-  // Issue category dropdown → show/hide text field
-  fIssueCategory.addEventListener('change', () => {
-    if (fIssueCategory.value === 'Other') {
+  // Issue category dropdown → always show description field
+  fIssueCategory.addEventListener('change', async () => {
+    const cat = fIssueCategory.value;
+    if (cat) {
       issueOtherWrap.classList.remove('hidden');
       fIssueDesc.value = '';
+      fIssueDesc.placeholder = cat === 'Other' ? 'Type the issue...' : `Describe the ${cat} issue...`;
+      // Show/hide required marker (only required for "Other")
+      const req = $('issueDescReq');
+      if (req) req.style.display = cat === 'Other' ? '' : 'none';
+      // Load category-specific history for autocomplete
+      issueHistoryCache = await IssueHistory.get(user.id, cat);
       fIssueDesc.focus();
     } else {
       issueOtherWrap.classList.add('hidden');
-      fIssueDesc.value = fIssueCategory.value;
+      fIssueDesc.value = '';
+      issueHistoryCache = [];
     }
   });
 
-  // Autocomplete (for "Other" text field)
-  issueHistoryCache = await IssueHistory.get(user.id);
+  // Autocomplete (filtered by selected category)
+  issueHistoryCache = [];
 
   fIssueDesc.addEventListener('input', () => {
     const val = fIssueDesc.value.trim().toLowerCase();
@@ -809,9 +817,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   edIssueCategory.addEventListener('change', () => {
-    if (edIssueCategory.value === 'Other') {
+    const cat = edIssueCategory.value;
+    if (cat) {
       edIssueOtherWrap.classList.remove('hidden');
       edIssueDesc.value = '';
+      edIssueDesc.placeholder = cat === 'Other' ? 'Type the issue...' : `Describe the ${cat} issue...`;
+      const req = $('edIssueDescReq');
+      if (req) req.style.display = cat === 'Other' ? '' : 'none';
     } else {
       edIssueOtherWrap.classList.add('hidden');
       edIssueDesc.value = '';
@@ -855,18 +867,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     edHoCo.textContent = task.hoOrCo || user.hoOrCo;
     edIssueType.value = task.issueType || 'Software';
 
-    // Issue category
+    // Issue category — new format uses issueCategory, old format derives from issueDescription
     const presets = ['System Monitor','CPU','Printer','UPS Invertor','UPS Battery','CCTV Set','Cash Counting Machine','Tab','Bluetooth Printer','Biometric'];
-    const issueVal = task.issueDescription || '';
-    if (presets.includes(issueVal)) {
-      edIssueCategory.value = issueVal;
-      edIssueOtherWrap.classList.add('hidden');
-      edIssueDesc.value = '';
+    if (task.issueCategory) {
+      edIssueCategory.value = task.issueCategory;
+      edIssueDesc.value = task.issueDescription || '';
     } else {
-      edIssueCategory.value = 'Other';
-      edIssueOtherWrap.classList.remove('hidden');
-      edIssueDesc.value = issueVal;
+      const issueVal = task.issueDescription || '';
+      if (presets.includes(issueVal)) {
+        edIssueCategory.value = issueVal;
+        edIssueDesc.value = '';
+      } else {
+        edIssueCategory.value = 'Other';
+        edIssueDesc.value = issueVal;
+      }
     }
+    // Always show description field
+    edIssueOtherWrap.classList.remove('hidden');
+    const cat = edIssueCategory.value;
+    edIssueDesc.placeholder = cat === 'Other' ? 'Type the issue...' : `Describe the ${cat} issue...`;
+    const edReq = $('edIssueDescReq');
+    if (edReq) edReq.style.display = cat === 'Other' ? '' : 'none';
 
     edSolution.value = task.solution || '';
     edDetailedDesc.value = task.detailedDescription || '';
@@ -878,7 +899,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getEditFormData() {
-    const issueDesc = edIssueCategory.value === 'Other' ? edIssueDesc.value.trim() : edIssueCategory.value;
     const staffSel = edStaff.options[edStaff.selectedIndex];
     return {
       timestamp: `${edDate.value} ${edTime.value}`,
@@ -887,7 +907,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       staffName: edStaff.value,
       staffId: staffSel && staffSel.dataset.empId ? staffSel.dataset.empId : '',
       issueType: edIssueType.value,
-      issueDescription: issueDesc,
+      issueCategory: edIssueCategory.value,
+      issueDescription: edIssueDesc.value.trim(),
       solution: edSolution.value.trim(),
       detailedDescription: edDetailedDesc.value.trim(),
       amount: parseFloat(edAmount.value) || 0
@@ -908,9 +929,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (saving || !validateEditForm()) return;
     saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
     try {
-      await DataStore.update(editingId, getEditFormData());
-      const desc = getEditFormData().issueDescription;
-      await IssueHistory.save(user.id, desc); issueHistoryCache = await IssueHistory.get(user.id);
+      const editData = getEditFormData();
+      await DataStore.update(editingId, editData);
+      if (editData.issueDescription) { await IssueHistory.save(user.id, editData.issueDescription, editData.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, editData.issueCategory); }
       showToast('Updated.', 'success');
       closeEdit(); await renderAll();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -965,20 +986,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       ${fStaffName.value ? `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${esc(fStaffName.value)} (${esc(fStaffId.value)})</div></div>` : ''}
       <div class="detail-field"><div class="detail-label">Issue Type</div><div class="detail-value">${esc(fIssueType.value)}</div></div>
       <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">₹${amt.toLocaleString('en-IN')}</div></div>
-    </div><div style="margin-top:10px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:3px">${esc(fIssueDesc.value)}</div></div>
+    </div><div style="margin-top:10px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:3px">${esc(fIssueCategory.value === 'Other' ? fIssueDesc.value : (fIssueDesc.value.trim() ? fIssueCategory.value + ' — ' + fIssueDesc.value : fIssueCategory.value))}</div></div>
     <div style="margin-top:10px"><div class="detail-label">Solution</div><div class="detail-value" style="margin-top:3px">${esc(fSolution.value)}</div></div>${desc}`;
   }
 
   async function buildTaskFromForm() {
     const taskId = state.editingTaskId || await generateTaskId();
-    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
   var saving = false;
   async function handleSave() {
     if (saving) return;
     saving = true; btnSave.disabled = true; btnComplete.disabled = true;
     try {
-      const d = await buildTaskFromForm(); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
+      const d = await buildTaskFromForm(); if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
       if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated.', 'success'); }
       else { await DataStore.add(d); showToast('Saved.', 'success'); }
       closeModal(); await renderAll();
@@ -991,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (saving) return;
       saving = true; btnSave.disabled = true; btnComplete.disabled = true;
       try {
-        const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
+        const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
         closeModal(); showToast('Completed!', 'success'); await renderAll();
       } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -1080,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     completedTableBody.innerHTML = tasks.map(t => {
       const tc = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[t.issueType] || 'badge-gray';
       const hc = t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
-      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(t.timestamp ? t.timestamp.split(' ')[0] : '')}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(t.issueDescription)}</td><td>₹${(t.amount || 0).toLocaleString('en-IN')}</td></tr>`;
+      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(t.timestamp ? t.timestamp.split(' ')[0] : '')}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(displayIssue(t))}</td><td>₹${(t.amount || 0).toLocaleString('en-IN')}</td></tr>`;
     }).join('');
     completedTableBody.querySelectorAll('[data-view]').forEach(row => { row.addEventListener('click', () => sharedOpenViewSummary(row.dataset.view)); });
   }
@@ -1107,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tb = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[task.issueType] || 'badge-gray';
     const hb = task.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
     const staff = task.staffName ? `<div class="task-field"><span class="task-field-label">Staff</span><span class="task-field-value">${esc(task.staffName)} (${esc(task.staffId)})</span></div>` : '';
-    return `<div class="task-card"><div class="task-status-bar"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span></div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(task.issueDescription)}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div></div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button><button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Completed</button></div></div>`;
+    return `<div class="task-card"><div class="task-status-bar"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span></div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div></div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button><button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Completed</button></div></div>`;
   }
 
   async function handleQuickComplete(taskId) {
@@ -1154,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="detail-field"><div class="detail-label">Status</div><div class="detail-value">${t.completed ? '✅ Completed' : '⏳ In Progress'}</div></div>
       <div class="detail-field"><div class="detail-label">Created By</div><div class="detail-value">${esc(t.createdBy)}</div></div>
       ${t.completedAt ? `<div class="detail-field"><div class="detail-label">Completed At</div><div class="detail-value">${esc(t.completedAt)}</div></div>` : ''}
-    </div><div style="margin-top:14px"><div class="detail-label">Issue Description</div><div class="detail-value" style="margin-top:4px">${esc(t.issueDescription)}</div></div>
+    </div><div style="margin-top:14px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:4px">${esc(displayIssue(t))}</div></div>
     <div style="margin-top:14px"><div class="detail-label">Solution</div><div class="detail-value" style="margin-top:4px">${esc(t.solution)}</div></div>${desc}</div>`;
     viewOverlay.classList.add('open'); document.body.style.overflow = 'hidden';
   }
@@ -1162,6 +1183,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function closeColFilterPopup() { const p = $('colFilterPopup'); if (p) p.remove(); }
 
   function esc(str) { if (!str && str !== 0) return ''; return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  // Display issue: category + description (backward-compatible with old tasks)
+  function displayIssue(task) {
+    if (task.issueCategory && task.issueCategory !== 'Other') {
+      return task.issueDescription ? `${task.issueCategory} — ${task.issueDescription}` : task.issueCategory;
+    }
+    return task.issueDescription || '';
+  }
 
   function showToast(message, type) {
     type = type || 'info';

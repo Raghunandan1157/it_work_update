@@ -309,8 +309,8 @@
           </select>
         </div>
         <div class="form-group hidden" id="issueOtherWrap" style="position:relative">
-          <label class="form-label">Describe the Issue <span style="color:var(--danger)">*</span></label>
-          <textarea class="form-control" id="fIssueDesc" placeholder="Type the issue..." rows="4" autocomplete="off"></textarea>
+          <label class="form-label" id="issueDescLabel">Description <span id="issueDescReq" style="color:var(--danger)">*</span></label>
+          <textarea class="form-control" id="fIssueDesc" placeholder="Describe the issue..." rows="4" autocomplete="off"></textarea>
           <div class="autocomplete-dropdown hidden" id="issueAutocomplete"></div>
         </div>
         <span class="form-error" id="errIssueDesc"></span>
@@ -410,8 +410,8 @@
           </select>
         </div>
         <div style="margin-top:10px" class="hidden" id="edIssueOtherWrap">
-          <div class="detail-label">Issue Detail</div>
-          <textarea class="form-control form-control-sm" id="edIssueDesc" rows="2" placeholder="Describe..." style="margin-top:4px"></textarea>
+          <div class="detail-label" id="edIssueDescLabel">Description <span id="edIssueDescReq" style="color:var(--danger)">*</span></div>
+          <textarea class="form-control form-control-sm" id="edIssueDesc" rows="2" placeholder="Describe the issue..." style="margin-top:4px"></textarea>
         </div>
 
         <div style="margin-top:14px">

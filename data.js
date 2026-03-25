@@ -29,28 +29,34 @@ function getEmployeesByLocation(location) {
 
 // Issue history (autocomplete from DB)
 const IssueHistory = {
-  async get(userId) {
-    const { data } = await db
+  async get(userId, category) {
+    let q = db
       .from('it_solutions_issue_history')
       .select('issue_text')
       .eq('user_id', userId)
       .order('used_at', { ascending: false })
       .limit(100);
+    if (category) q = q.eq('issue_category', category);
+    const { data } = await q;
     return data ? data.map(r => r.issue_text) : [];
   },
 
-  async save(userId, text) {
+  async save(userId, text, category) {
     if (!text || !text.trim()) return;
     const trimmed = text.trim();
     // Remove old duplicate if exists, then insert fresh
-    await db
+    let delQ = db
       .from('it_solutions_issue_history')
       .delete()
       .eq('user_id', userId)
       .ilike('issue_text', trimmed);
+    if (category) delQ = delQ.eq('issue_category', category);
+    await delQ;
+    const row = { user_id: userId, issue_text: trimmed };
+    if (category) row.issue_category = category;
     await db
       .from('it_solutions_issue_history')
-      .insert({ user_id: userId, issue_text: trimmed });
+      .insert(row);
   }
 };
 
@@ -82,6 +88,7 @@ function toDb(task) {
     staff_id: task.staffId || null,
     issue_type: task.issueType,
     issue_description: task.issueDescription,
+    issue_category: task.issueCategory || null,
     solution: task.solution,
     detailed_description: task.detailedDescription || null,
     amount: task.amount || 0,
@@ -102,6 +109,7 @@ function fromDb(row) {
     staffId: row.staff_id,
     issueType: row.issue_type,
     issueDescription: row.issue_description,
+    issueCategory: row.issue_category || null,
     solution: row.solution,
     detailedDescription: row.detailed_description,
     amount: row.amount,
@@ -142,6 +150,7 @@ const DataStore = {
     if (updates.staffId !== undefined)             dbUpdates.staff_id = updates.staffId;
     if (updates.issueType !== undefined)           dbUpdates.issue_type = updates.issueType;
     if (updates.issueDescription !== undefined)    dbUpdates.issue_description = updates.issueDescription;
+    if (updates.issueCategory !== undefined)       dbUpdates.issue_category = updates.issueCategory;
     if (updates.solution !== undefined)            dbUpdates.solution = updates.solution;
     if (updates.detailedDescription !== undefined) dbUpdates.detailed_description = updates.detailedDescription;
     if (updates.amount !== undefined)              dbUpdates.amount = updates.amount;
