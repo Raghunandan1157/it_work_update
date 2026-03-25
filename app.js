@@ -865,27 +865,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('editSaveBtn').addEventListener('click', async () => {
-    if (!validateEditForm()) return;
+    if (saving || !validateEditForm()) return;
+    saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
     try {
       await DataStore.update(editingId, getEditFormData());
       const desc = getEditFormData().issueDescription;
       await IssueHistory.save(user.id, desc); issueHistoryCache = await IssueHistory.get(user.id);
       showToast('Updated.', 'success');
-    } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
-    closeEdit(); await renderAll();
+      closeEdit(); await renderAll();
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    saving = false; $('editSaveBtn').disabled = false; $('editCompleteBtn').disabled = false;
   });
 
   $('editCompleteBtn').addEventListener('click', () => {
-    if (!validateEditForm()) return;
+    if (saving || !validateEditForm()) return;
     showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
+      if (saving) return;
+      saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
       try {
         const updates = getEditFormData();
         updates.completed = true;
         updates.completedAt = formatDateTime(new Date());
         await DataStore.update(editingId, updates);
         showToast('Completed!', 'success');
-      } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
-      closeEdit(); await renderAll();
+        closeEdit(); await renderAll();
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+      saving = false; $('editSaveBtn').disabled = false; $('editCompleteBtn').disabled = false;
     });
   });
   function goToStep(step) {
@@ -928,21 +933,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const taskId = state.editingTaskId || await generateTaskId();
     return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
+  var saving = false;
   async function handleSave() {
-    const d = await buildTaskFromForm(); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
+    if (saving) return;
+    saving = true; btnSave.disabled = true; btnComplete.disabled = true;
     try {
+      const d = await buildTaskFromForm(); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
       if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated.', 'success'); }
       else { await DataStore.add(d); showToast('Saved.', 'success'); }
-    } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
-    closeModal(); await renderAll();
+      closeModal(); await renderAll();
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    saving = false; btnSave.disabled = false; btnComplete.disabled = false;
   }
   async function handleComplete() {
+    if (saving) return;
     showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
-      const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
+      if (saving) return;
+      saving = true; btnSave.disabled = true; btnComplete.disabled = true;
       try {
+        const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); await IssueHistory.save(user.id, d.issueDescription); issueHistoryCache = await IssueHistory.get(user.id);
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
-      } catch (err) { showToast('Error: ' + err.message, 'error'); return; }
-      closeModal(); showToast('Completed!', 'success'); await renderAll();
+        closeModal(); showToast('Completed!', 'success'); await renderAll();
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+      saving = false; btnSave.disabled = false; btnComplete.disabled = false;
     });
   }
 
