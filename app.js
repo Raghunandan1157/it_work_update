@@ -86,13 +86,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       const allTasks = await DataStore.getAll();
       const stats = await DataStore.getStats();
 
-      // Top stat cards
+      // Top stat cards (clickable)
       $('adminStatsGrid').innerHTML = `
-        <div class="stat-card accent-blue"><div class="stat-icon blue">📋</div><div><div class="stat-num">${stats.total}</div><div class="stat-label">Total Tasks</div></div></div>
-        <div class="stat-card accent-orange"><div class="stat-icon orange">⏳</div><div><div class="stat-num">${stats.inProgress}</div><div class="stat-label">In Progress</div></div></div>
-        <div class="stat-card accent-green"><div class="stat-icon green">✅</div><div><div class="stat-num">${stats.completed}</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card accent-blue clickable" data-goto="reports" data-status="all"><div class="stat-icon blue">📋</div><div><div class="stat-num">${stats.total}</div><div class="stat-label">Total Tasks</div></div></div>
+        <div class="stat-card accent-orange clickable" data-goto="reports" data-status="inprogress"><div class="stat-icon orange">⏳</div><div><div class="stat-num">${stats.inProgress}</div><div class="stat-label">In Progress</div></div></div>
+        <div class="stat-card accent-green clickable" data-goto="reports" data-status="completed"><div class="stat-icon green">✅</div><div><div class="stat-num">${stats.completed}</div><div class="stat-label">Completed</div></div></div>
         <div class="stat-card accent-cyan"><div class="stat-icon cyan">👥</div><div><div class="stat-num">${staffUsers.length}</div><div class="stat-label">Staff Members</div></div></div>
       `;
+
+      // Stat card click → go to reports with filter
+      $('adminStatsGrid').querySelectorAll('[data-goto]').forEach(card => {
+        card.addEventListener('click', async () => {
+          reportStatusFilter = card.dataset.status;
+          selectedStaffId = '';
+          colFilters.date = ''; colFilters.branch = ''; colFilters.issueType = '';
+          document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
+          document.querySelector('[data-admin-tab="reports"]').classList.add('active');
+          adminTab = 'reports';
+          $('adminOverview').classList.add('hidden');
+          $('adminReports').classList.remove('hidden');
+          $('adminDuration').classList.add('hidden');
+          $('staffSelector').innerHTML = '';
+          await renderStaffSelector();
+          await renderReport();
+        });
+      });
 
       // User cards
       const userCardsHtml = [];
@@ -152,6 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ─── REPORTS ──────────────────────────────────────────────────────────────
     let selectedStaffId = '';
+    let reportStatusFilter = 'all'; // 'all', 'inprogress', 'completed'
     const colFilters = { date: '', branch: '', issueType: '' };
 
     async function renderStaffSelector() {
@@ -265,6 +284,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderReport() {
       let tasks = await DataStore.getAll();
+
+      // Filter by status
+      if (reportStatusFilter === 'inprogress') tasks = tasks.filter(t => !t.completed);
+      else if (reportStatusFilter === 'completed') tasks = tasks.filter(t => t.completed);
 
       // Filter by selected staff
       if (selectedStaffId) {
