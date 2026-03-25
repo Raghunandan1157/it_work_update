@@ -344,6 +344,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const completedFilters = $('completedFilters'), completedTableWrap = $('completedTableWrap'), completedTableBody = $('completedTableBody');
   const solutionWordCount = $('solutionWordCount'), descWordCount = $('descWordCount');
 
+  let completedColFilters = {};
+  let quickFilterType = null;
+
   fHoCo.value = user.hoOrCo;
   populateBranchDropdown();
   await renderAll();
@@ -363,8 +366,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Quick stats filter
-  let completedColFilters = {};
-  let quickFilterType = null;
   document.querySelectorAll('[data-quickfilter]').forEach(item => {
     item.addEventListener('click', async () => {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
