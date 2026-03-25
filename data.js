@@ -237,9 +237,9 @@ const DataStore = {
       db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }),
       db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', false),
       db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', true),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software'),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware'),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both'),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software').eq('completed', false),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware').eq('completed', false),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both').eq('completed', false),
     ]);
 
     return {
