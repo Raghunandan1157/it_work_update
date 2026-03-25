@@ -6,7 +6,7 @@ const Auth = {
   _usersCache: null,
 
   async login(userId, password) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_users')
       .select('user_id, name, role, ho_or_co')
       .eq('user_id', userId.trim())
@@ -60,7 +60,7 @@ const Auth = {
   async getUsers() {
     if (this._usersCache) return this._usersCache;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_users')
       .select('user_id, name, role, ho_or_co');
 
@@ -76,7 +76,7 @@ const Auth = {
   },
 
   async getUserById(userId) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_users')
       .select('user_id, name, role, ho_or_co')
       .eq('user_id', userId)

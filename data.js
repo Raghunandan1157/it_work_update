@@ -3,7 +3,7 @@
 const BRANCHES = []; // loaded from DB via loadBranches()
 
 async function loadBranches() {
-  const { data } = await supabase
+  const { data } = await db
     .from('it_solutions_branches')
     .select('name')
     .eq('is_active', true);
@@ -81,7 +81,7 @@ function fromDb(row) {
 
 const DataStore = {
   async getAll() {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_tasks')
       .select('*')
       .order('created_at', { ascending: false });
@@ -90,7 +90,7 @@ const DataStore = {
   },
 
   async add(task) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_tasks')
       .insert(toDb(task))
       .select()
@@ -117,7 +117,7 @@ const DataStore = {
     if (updates.completedAt !== undefined)         dbUpdates.completed_at = updates.completedAt;
     if (updates.createdBy !== undefined)           dbUpdates.created_by = updates.createdBy;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_tasks')
       .update(dbUpdates)
       .eq('task_id', taskId)
@@ -128,7 +128,7 @@ const DataStore = {
   },
 
   async delete(taskId) {
-    const { error } = await supabase
+    const { error } = await db
       .from('it_solutions_tasks')
       .delete()
       .eq('task_id', taskId);
@@ -136,7 +136,7 @@ const DataStore = {
   },
 
   async getById(taskId) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('it_solutions_tasks')
       .select('*')
       .eq('task_id', taskId)
@@ -149,7 +149,7 @@ const DataStore = {
   },
 
   async search(query, filters = {}) {
-    let q = supabase.from('it_solutions_tasks').select('*');
+    let q = db.from('it_solutions_tasks').select('*');
 
     if (query) {
       // ilike search across the main text columns using Supabase's or() filter
@@ -202,12 +202,12 @@ const DataStore = {
       { count: hardware },
       { count: both },
     ] = await Promise.all([
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }),
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', false),
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', true),
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software'),
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware'),
-      supabase.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both'),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', false),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', true),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software'),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware'),
+      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both'),
     ]);
 
     return {
