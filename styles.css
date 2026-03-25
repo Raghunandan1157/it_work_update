@@ -658,12 +658,13 @@ select.form-control { cursor: pointer; }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 680px;
-  max-height: 92vh;
+  max-width: 720px;
+  height: 85vh;
   display: flex;
   flex-direction: column;
   transform: translateY(30px) scale(0.96);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible;
 }
 .modal-overlay.open .modal { transform: translateY(0) scale(1); }
 
@@ -693,10 +694,27 @@ select.form-control { cursor: pointer; }
 .modal-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: visible;
   padding: 22px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+/* Native select dropdowns always overflow — ensure form-control select is tall enough */
+.modal-body select.form-control {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+select.form-control {
+  max-height: none;
+}
+/* Make native select show more options */
+select.form-control[size] {
+  overflow-y: auto;
 }
 .modal-footer {
   display: flex;
@@ -832,7 +850,7 @@ select.form-control { cursor: pointer; }
   .login-card { padding: 28px 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .task-grid { grid-template-columns: 1fr; }
-  .modal { max-height: 98vh; border-radius: var(--radius); margin: 4px; }
+  .modal { height: 95vh; border-radius: var(--radius); margin: 4px; }
   .modal-header, .modal-body, .modal-footer { padding-left: 14px; padding-right: 14px; }
   .modal-footer { gap: 6px; }
   .modal-footer .btn { padding: 8px 12px; font-size: 0.8rem; }

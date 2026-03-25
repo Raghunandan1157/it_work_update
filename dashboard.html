@@ -317,8 +317,8 @@
       </div>
       <div class="wizard-step hidden" id="step4">
         <h3 class="step-heading">💡 Solution & Description</h3>
-        <div class="form-group"><label class="form-label">Solution (max 50 words) <span style="color:var(--danger)">*</span></label><textarea class="form-control" id="fSolution" placeholder="Brief solution…" rows="2" autocomplete="off"></textarea><div class="word-counter"><span id="solutionWordCount">0</span> / 50 words</div><span class="form-error" id="errSolution"></span></div>
-        <div class="form-group"><label class="form-label">Detailed Description (500–1000 words)</label><textarea class="form-control" id="fDetailedDesc" placeholder="Step-by-step details, root cause, notes…" rows="10" autocomplete="off"></textarea><div class="word-counter"><span id="descWordCount">0</span> / 500–1000 words</div><span class="form-error" id="errDetailedDesc"></span></div>
+        <div class="form-group"><label class="form-label">Solution <span style="color:var(--danger)">* (mandatory)</span></label><textarea class="form-control" id="fSolution" placeholder="Brief solution…" rows="3" autocomplete="off"></textarea><div class="word-counter"><span id="solutionWordCount">0</span> / 50 words</div><span class="form-error" id="errSolution"></span></div>
+        <div class="form-group"><label class="form-label">Detailed Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><textarea class="form-control" id="fDetailedDesc" placeholder="Step-by-step details, root cause, notes…" rows="8" autocomplete="off"></textarea><div class="word-counter"><span id="descWordCount">0</span> words</div><span class="form-error" id="errDetailedDesc"></span></div>
       </div>
       <div class="wizard-step hidden" id="step5"><h3 class="step-heading">💰 Amount</h3><div class="form-group"><label class="form-label">Amount (₹)</label><div class="amount-field"><span class="currency-symbol">₹</span><input class="form-control" type="number" id="fAmount" value="0" min="0" step="0.01" /></div></div></div>
       <div class="wizard-step hidden" id="step6"><h3 class="step-heading">📄 Review & Save</h3><div class="review-summary" id="reviewSummary"></div></div>
@@ -412,11 +412,11 @@
           <textarea class="form-control form-control-sm" id="edIssueDesc" rows="2" placeholder="Describe..."></textarea>
         </div>
         <div class="edit-row">
-          <label class="edit-label">Solution</label>
+          <label class="edit-label">Solution <span style="color:var(--danger)">*</span></label>
           <textarea class="form-control form-control-sm" id="edSolution" rows="2"></textarea>
         </div>
         <div class="edit-row">
-          <label class="edit-label">Detailed Description</label>
+          <label class="edit-label">Detailed Description <span style="color:var(--text-muted);font-weight:400;text-transform:none">(optional)</span></label>
           <textarea class="form-control form-control-sm" id="edDetailedDesc" rows="5"></textarea>
         </div>
         <div class="edit-row">
