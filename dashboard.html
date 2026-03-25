@@ -67,6 +67,10 @@
         <span class="nav-icon">📋</span>
         <span class="nav-label">Reports</span>
       </div>
+      <div class="nav-item" data-admin-tab="duration" role="button" tabindex="0">
+        <span class="nav-icon">⏱️</span>
+        <span class="nav-label">Duration</span>
+      </div>
       <div class="divider" style="margin:12px 0"></div>
       <div class="nav-section-label">Summary</div>
       <div class="admin-sidebar-stats" id="adminSidebarStats"></div>
@@ -178,6 +182,33 @@
               </thead>
               <tbody id="reportTableBody"></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- ADMIN: DURATION -->
+        <div id="adminDuration" class="hidden">
+          <div class="section-title">⏱️ Task Completion Duration</div>
+          <div class="duration-summary" id="durationSummary"></div>
+          <div class="duration-chart-wrap">
+            <div class="duration-chart-title">Average Time to Complete (per staff)</div>
+            <div class="duration-chart" id="durationChart"></div>
+          </div>
+          <div class="duration-chart-wrap" style="margin-top:20px">
+            <div class="duration-chart-title">Task Duration Breakdown</div>
+            <div class="duration-table-wrap">
+              <table class="completed-table" id="durationTable">
+                <thead>
+                  <tr>
+                    <th>Staff</th>
+                    <th>Tasks Done</th>
+                    <th>Avg Time</th>
+                    <th>Fastest</th>
+                    <th>Slowest</th>
+                  </tr>
+                </thead>
+                <tbody id="durationTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 

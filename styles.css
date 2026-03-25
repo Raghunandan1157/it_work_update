@@ -1286,6 +1286,91 @@ select.form-control { cursor: pointer; }
 .report-summary-num { font-size: 1.6rem; font-weight: 800; line-height: 1.2; }
 .report-summary-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; margin-top: 4px; }
 
+/* DURATION CHART */
+.duration-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.duration-summary .report-summary-card { flex: 1; min-width: 120px; }
+
+.duration-chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.duration-chart-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.duration-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dur-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dur-bar-label {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dur-bar-track {
+  flex: 1;
+  height: 24px;
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dur-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 4px;
+}
+.dur-bar-value {
+  width: 65px;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+}
+.dur-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.duration-table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+@media (max-width: 480px) {
+  .duration-summary { gap: 8px; }
+  .duration-summary .report-summary-card { min-width: 70px; padding: 10px 8px; }
+  .duration-chart-wrap { padding: 14px 10px; }
+  .dur-bar-label { width: 70px; font-size: 0.7rem; }
+  .dur-bar-value { width: 50px; font-size: 0.7rem; }
+  .dur-bar-track { height: 18px; }
+}
+
 /* REPORT TOPBAR & STAFF SELECTOR */
 .report-topbar {
   display: flex;

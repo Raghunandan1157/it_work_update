@@ -70,7 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       adminTab = item.dataset.adminTab;
       $('adminOverview').classList.toggle('hidden', adminTab !== 'overview');
       $('adminReports').classList.toggle('hidden', adminTab !== 'reports');
+      $('adminDuration').classList.toggle('hidden', adminTab !== 'duration');
       if (adminTab === 'reports') await renderReport();
+      if (adminTab === 'duration') await renderDuration();
       sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show');
     });
 
@@ -315,12 +317,104 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // ─── DURATION ──────────────────────────────────────────────────────────────
+    function calcDurationMs(start, end) {
+      if (!start || !end) return null;
+      const s = new Date(start), e = new Date(end);
+      if (isNaN(s) || isNaN(e)) return null;
+      return e - s;
+    }
+
+    function formatDuration(ms) {
+      if (ms == null || ms < 0) return '—';
+      const mins = Math.floor(ms / 60000);
+      if (mins < 60) return `${mins}m`;
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      if (hrs < 24) return `${hrs}h ${remMins}m`;
+      const days = Math.floor(hrs / 24);
+      const remHrs = hrs % 24;
+      return `${days}d ${remHrs}h`;
+    }
+
+    async function renderDuration() {
+      const allTasks = await DataStore.getAll();
+      const completed = allTasks.filter(t => t.completed && t.timestamp && t.completedAt);
+
+      // Group by staff
+      const staffMap = {};
+      completed.forEach(t => {
+        const name = t.createdBy || 'Unknown';
+        const dur = calcDurationMs(t.timestamp, t.completedAt);
+        if (dur == null || dur < 0) return;
+        if (!staffMap[name]) staffMap[name] = [];
+        staffMap[name].push(dur);
+      });
+
+      const staffStats = Object.entries(staffMap).map(([name, durations]) => {
+        const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+        const min = Math.min(...durations);
+        const max = Math.max(...durations);
+        return { name, count: durations.length, avg, min, max };
+      }).sort((a, b) => a.avg - b.avg);
+
+      // Summary cards
+      const totalCompleted = completed.length;
+      const allDurations = completed.map(t => calcDurationMs(t.timestamp, t.completedAt)).filter(d => d != null && d >= 0);
+      const globalAvg = allDurations.length ? allDurations.reduce((a, b) => a + b, 0) / allDurations.length : 0;
+      const fastest = allDurations.length ? Math.min(...allDurations) : 0;
+      const slowest = allDurations.length ? Math.max(...allDurations) : 0;
+
+      $('durationSummary').innerHTML = `
+        <div class="report-summary-card"><div class="report-summary-num">${totalCompleted}</div><div class="report-summary-label">Completed</div></div>
+        <div class="report-summary-card"><div class="report-summary-num" style="color:var(--primary)">${formatDuration(globalAvg)}</div><div class="report-summary-label">Avg Duration</div></div>
+        <div class="report-summary-card"><div class="report-summary-num" style="color:var(--success)">${formatDuration(fastest)}</div><div class="report-summary-label">Fastest</div></div>
+        <div class="report-summary-card"><div class="report-summary-num" style="color:var(--danger)">${formatDuration(slowest)}</div><div class="report-summary-label">Slowest</div></div>
+      `;
+
+      // Bar chart
+      const maxAvg = staffStats.length ? Math.max(...staffStats.map(s => s.avg)) : 1;
+      if (!staffStats.length) {
+        $('durationChart').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">No completed tasks with duration data.</div>';
+      } else {
+        const barColors = ['#2563eb', '#7c3aed', '#0891b2', '#d97706', '#dc2626', '#16a34a', '#db2777', '#4f46e5', '#ea580c', '#0d9488'];
+        $('durationChart').innerHTML = staffStats.map((s, i) => {
+          const pct = Math.max((s.avg / maxAvg) * 100, 4);
+          const color = barColors[i % barColors.length];
+          return `<div class="dur-bar-row">
+            <div class="dur-bar-label">${esc(s.name)}</div>
+            <div class="dur-bar-track">
+              <div class="dur-bar-fill" style="width:${pct}%;background:${color}"></div>
+            </div>
+            <div class="dur-bar-value">${formatDuration(s.avg)}</div>
+          </div>`;
+        }).join('');
+      }
+
+      // Table
+      if (!staffStats.length) {
+        $('durationTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">No data.</td></tr>';
+      } else {
+        $('durationTableBody').innerHTML = staffStats.map((s, i) => {
+          const barColors = ['#2563eb', '#7c3aed', '#0891b2', '#d97706', '#dc2626', '#16a34a', '#db2777', '#4f46e5', '#ea580c', '#0d9488'];
+          const color = barColors[i % barColors.length];
+          return `<tr>
+            <td><span class="dur-dot" style="background:${color}"></span>${esc(s.name)}</td>
+            <td>${s.count}</td>
+            <td><strong>${formatDuration(s.avg)}</strong></td>
+            <td style="color:var(--success)">${formatDuration(s.min)}</td>
+            <td style="color:var(--danger)">${formatDuration(s.max)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
     await renderAdminOverview();
     await renderStaffSelector();
     await renderReport();
 
     // Refresh periodically
-    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'reports') await renderReport(); }, 5000);
+    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'reports') await renderReport(); if (adminTab === 'duration') await renderDuration(); }, 5000);
 
     // Shared view modal for admin
     function openViewSummary(taskId) { sharedOpenViewSummary(taskId); }
