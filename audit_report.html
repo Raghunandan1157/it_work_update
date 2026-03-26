@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Report - IT Work Update App</title>
+  <style>
+    @page { margin: 20mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #222; line-height: 1.6; padding: 40px; max-width: 800px; margin: 0 auto; background: #fff; }
+
+    .header { text-align: center; border-bottom: 3px solid #1a56db; padding-bottom: 20px; margin-bottom: 30px; }
+    .header h1 { font-size: 24px; color: #1a56db; margin-bottom: 4px; }
+    .header .subtitle { font-size: 14px; color: #555; }
+
+    .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px; }
+    .meta-table td { padding: 8px 12px; border: 1px solid #ddd; }
+    .meta-table td:first-child { background: #f3f6fc; font-weight: 600; width: 180px; color: #333; }
+
+    .result-box { background: #ecfdf5; border: 2px solid #16a34a; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 30px; }
+    .result-box .badge { display: inline-block; background: #16a34a; color: #fff; font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .result-box h2 { font-size: 20px; color: #15803d; }
+    .result-box p { font-size: 14px; color: #333; margin-top: 6px; }
+
+    h3 { font-size: 16px; color: #1a56db; margin: 24px 0 12px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+
+    .checklist { list-style: none; font-size: 14px; }
+    .checklist li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; }
+    .checklist li:last-child { border-bottom: none; }
+    .check { color: #16a34a; font-weight: bold; font-size: 16px; }
+
+    .summary-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    .summary-table th { background: #1a56db; color: #fff; text-align: left; padding: 10px 12px; }
+    .summary-table td { padding: 10px 12px; border: 1px solid #ddd; }
+    .summary-table tr:nth-child(even) { background: #f8f9fc; }
+    .tag-safe { display: inline-block; background: #dcfce7; color: #15803d; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; }
+    .tag-manual { display: inline-block; background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; }
+
+    .bottom-line { background: #f3f6fc; border-left: 4px solid #1a56db; padding: 16px 20px; margin-top: 30px; border-radius: 0 6px 6px 0; font-size: 14px; }
+    .bottom-line strong { color: #1a56db; }
+
+    .footer { text-align: center; margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Audit Report</h1>
+    <div class="subtitle">Auto-Delete Policy Check &mdash; IT Work Update Application</div>
+  </div>
+
+  <table class="meta-table">
+    <tr><td>Date of Audit</td><td>March 26, 2026</td></tr>
+    <tr><td>Application</td><td>IT Work Update (Task Management System)</td></tr>
+    <tr><td>Scope</td><td>Check for any automatic data deletion (24-hour, 1-month, or any time-based)</td></tr>
+    <tr><td>Files Reviewed</td><td>All 8 source files + database setup script</td></tr>
+    <tr><td>Audited By</td><td>Claude (Automated Code Audit)</td></tr>
+  </table>
+
+  <div class="result-box">
+    <div class="badge">Passed</div>
+    <h2>No Auto-Delete Found</h2>
+    <p>Your data is permanently saved. Nothing gets deleted on its own &mdash; not after 24 hours, not after a month, not ever.</p>
+  </div>
+
+  <h3>What Was Checked</h3>
+  <ul class="checklist">
+    <li><span class="check">&#10003;</span> All application code files (app.js, data.js, auth.js, supabase.js)</li>
+    <li><span class="check">&#10003;</span> All webpage files (dashboard.html, login.html, index.html, styles.css)</li>
+    <li><span class="check">&#10003;</span> Database setup script (nmspl_setup.sql)</li>
+    <li><span class="check">&#10003;</span> All timers, scheduled actions, and background processes</li>
+    <li><span class="check">&#10003;</span> All delete-related code throughout the entire application</li>
+  </ul>
+
+  <h3>Findings Summary</h3>
+  <table class="summary-table">
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>Automatic deletion after 24 hours</td><td><span class="tag-safe">None Found</span></td></tr>
+    <tr><td>Automatic deletion after 1 month</td><td><span class="tag-safe">None Found</span></td></tr>
+    <tr><td>Any time-based deletion</td><td><span class="tag-safe">None Found</span></td></tr>
+    <tr><td>Scheduled cleanup routines</td><td><span class="tag-safe">None Found</span></td></tr>
+    <tr><td>Database expiration triggers</td><td><span class="tag-safe">None Found</span></td></tr>
+    <tr><td>Data retention / purge policies</td><td><span class="tag-safe">None Found</span></td></tr>
+  </table>
+
+  <h3>Delete Actions That Exist (All Manual)</h3>
+  <table class="summary-table">
+    <tr><th>Action</th><th>When It Happens</th><th>Type</th></tr>
+    <tr><td>Delete a task</td><td>Only when a user clicks delete in the app</td><td><span class="tag-manual">Manual</span></td></tr>
+    <tr><td>Remove duplicate issue text</td><td>Only when saving a new issue (removes the old copy before saving the updated one)</td><td><span class="tag-manual">Manual</span></td></tr>
+    <tr><td>Logout (clear session)</td><td>Only when a user clicks logout</td><td><span class="tag-manual">Manual</span></td></tr>
+  </table>
+
+  <div class="bottom-line">
+    <strong>Bottom Line:</strong> Your data is safe. All records (tasks, employees, users, and issue history) are stored permanently. Nothing disappears unless someone manually chooses to delete it.
+  </div>
+
+  <div class="footer">
+    IT Work Update App &mdash; Auto-Delete Audit Report &mdash; Generated March 26, 2026
+  </div>
+
+</body>
+</html>
