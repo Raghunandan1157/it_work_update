@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.addEventListener('click', async () => {
           reportStatusFilter = card.dataset.status;
           selectedStaffId = '';
-          companyFilter = ''; colFilters.date = ''; colFilters.branch = ''; colFilters.issueType = '';
+          companyFilter = ''; colFilters.date = []; colFilters.branch = []; colFilters.issueType = []; colFilters.hoOrCo = [];
           document.querySelectorAll('.company-filter-btn').forEach(b => b.classList.toggle('active', !b.dataset.companyFilter));
           document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
           document.querySelector('[data-admin-tab="reports"]').classList.add('active');
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         row.addEventListener('click', async () => {
           reportStatusFilter = row.dataset.sidebarStatus;
           selectedStaffId = '';
-          companyFilter = ''; colFilters.date = ''; colFilters.branch = ''; colFilters.issueType = '';
+          companyFilter = ''; colFilters.date = []; colFilters.branch = []; colFilters.issueType = []; colFilters.hoOrCo = [];
           document.querySelectorAll('.company-filter-btn').forEach(b => b.classList.toggle('active', !b.dataset.companyFilter));
           document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
           document.querySelector('[data-admin-tab="reports"]').classList.add('active');
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedStaffId = '';
     let reportStatusFilter = 'all'; // 'all', 'inprogress', 'completed'
     let companyFilter = ''; // '', 'NLPL', 'NMSPL'
-    const colFilters = { date: '', branch: '', issueType: '', hoOrCo: '' };
+    const colFilters = { date: [], branch: [], issueType: [], hoOrCo: [] };
 
     // Company filter buttons
     document.querySelectorAll('.company-filter-btn').forEach(btn => {
@@ -284,41 +284,48 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       if (companyFilter === 'NLPL') tasks = tasks.filter(t => BRANCHES.includes(t.branch));
       else if (companyFilter === 'NMSPL') tasks = tasks.filter(t => NMSPL_BRANCHES.includes(t.branch));
-      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && extractDate(t.timestamp) === colFilters.date);
-      if (colFilters.branch) tasks = tasks.filter(t => t.branch === colFilters.branch);
-      if (colFilters.issueType) tasks = tasks.filter(t => t.issueType === colFilters.issueType);
-      if (colFilters.hoOrCo) tasks = tasks.filter(t => t.hoOrCo === colFilters.hoOrCo);
+      if (colFilters.date.length) tasks = tasks.filter(t => t.timestamp && colFilters.date.includes(extractDate(t.timestamp)));
+      if (colFilters.branch.length) tasks = tasks.filter(t => colFilters.branch.includes(t.branch));
+      if (colFilters.issueType.length) tasks = tasks.filter(t => colFilters.issueType.includes(t.issueType));
+      if (colFilters.hoOrCo.length) tasks = tasks.filter(t => colFilters.hoOrCo.includes(t.hoOrCo));
 
-      const showStaff = !!colFilters.hoOrCo;
+      const showStaff = colFilters.hoOrCo.length > 0;
       const headers = showStaff
-        ? ['Task ID', 'Date', 'Created By', 'Branch', 'HO/CO', 'Staff Details', 'Issue Type', 'Issue Description', 'Status', 'Amount']
-        : ['Task ID', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Amount'];
-      const rows = tasks.map(t => {
+        ? ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Staff Details', 'Issue Type', 'Issue Description', 'Status', 'Amount']
+        : ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Amount'];
+
+      const csvEscape = (val) => {
+        const s = String(val == null ? '' : val).replace(/\u2014/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+
+      const rows = tasks.map((t, idx) => {
         const base = [
-          t.taskId,
+          idx + 1,
           formatDateDMY(extractDate(t.timestamp)),
           t.createdBy,
           t.branch,
           t.hoOrCo
         ];
-        if (showStaff) base.push('"' + ((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : '')).replace(/"/g, '""') + '"');
+        if (showStaff) base.push((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : ''));
         base.push(
           t.issueType,
-          '"' + (displayIssue(t) || '').replace(/"/g, '""') + '"',
+          displayIssue(t) || '',
           t.completed ? 'Completed' : 'In Progress',
           t.amount || 0
         );
-        return base.join(',');
+        return base.map(csvEscape).join(',');
       });
-      const csv = [headers.join(','), ...rows].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'it_work_update_' + new Date().toISOString().slice(0, 10) + '.csv';
       a.click(); URL.revokeObjectURL(url);
     });
 
-    // Report table column header filters
+    // Report table column header filters (full-screen modal)
     document.querySelectorAll('.th-filterable[data-rptcol]').forEach(th => {
       th.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -333,29 +340,59 @@ document.addEventListener('DOMContentLoaded', async () => {
         else return;
         if (!vals.length) return;
 
-        const rect = th.getBoundingClientRect();
-        const currentVal = colFilters[col];
+        const currentArr = colFilters[col] || [];
+        let selected = [...currentArr];
 
-        const popup = document.createElement('div');
-        popup.className = 'col-filter-popup'; popup.id = 'colFilterPopup';
-        popup.style.top = (rect.bottom + 4) + 'px';
-        popup.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
-
+        const overlay = document.createElement('div');
+        overlay.className = 'col-filter-overlay'; overlay.id = 'colFilterPopup';
         const labels = { date: 'Date', branch: 'Branch', issueType: 'Issue Type', hoOrCo: 'HO/CO' };
-        popup.innerHTML = `
-          <div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
-          <div class="col-filter-list">
-            <div class="col-filter-item" data-val=""><span class="check-mark">${!currentVal ? '✓' : ''}</span><span>Show All</span></div>
-            ${vals.map(v => `<div class="col-filter-item ${currentVal === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${currentVal === v ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}
+        overlay.innerHTML = `
+          <div class="col-filter-modal">
+            <div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
+            <div class="col-filter-list">
+              <div class="col-filter-item ${selected.length === 0 ? 'selected' : ''}" data-val="__all__"><span class="check-mark">${selected.length === 0 ? '✓' : ''}</span><span>Show All</span></div>
+              ${vals.map(v => `<div class="col-filter-item ${selected.includes(v) ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${selected.includes(v) ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}
+            </div>
+            <div class="col-filter-footer">
+              <button class="btn-filter-clear">Show All</button>
+              <button class="btn-filter-apply">Apply</button>
+            </div>
           </div>`;
-        document.body.appendChild(popup);
-        popup.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
-        popup.querySelectorAll('.col-filter-item').forEach(item => {
-          item.addEventListener('click', async () => {
-            colFilters[col] = item.dataset.val;
-            closeColFilterPopup();
-            await renderReport();
+        document.body.appendChild(overlay);
+
+        function refreshChecks() {
+          overlay.querySelectorAll('.col-filter-item').forEach(item => {
+            const v = item.dataset.val;
+            const isSelected = v === '__all__' ? selected.length === 0 : selected.includes(v);
+            item.classList.toggle('selected', isSelected);
+            item.querySelector('.check-mark').textContent = isSelected ? '✓' : '';
           });
+        }
+
+        overlay.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeColFilterPopup(); });
+        overlay.querySelectorAll('.col-filter-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const v = item.dataset.val;
+            if (v === '__all__') { selected = []; }
+            else {
+              const idx = selected.indexOf(v);
+              if (idx >= 0) selected.splice(idx, 1); else selected.push(v);
+            }
+            refreshChecks();
+          });
+        });
+        overlay.querySelector('.btn-filter-clear').addEventListener('click', async () => {
+          colFilters[col] = [];
+          th.classList.remove('filtered');
+          closeColFilterPopup();
+          await renderReport();
+        });
+        overlay.querySelector('.btn-filter-apply').addEventListener('click', async () => {
+          colFilters[col] = [...selected];
+          th.classList.toggle('filtered', selected.length > 0);
+          closeColFilterPopup();
+          await renderReport();
         });
       });
     });
@@ -376,13 +413,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (companyFilter === 'NLPL') tasks = tasks.filter(t => BRANCHES.includes(t.branch));
       else if (companyFilter === 'NMSPL') tasks = tasks.filter(t => NMSPL_BRANCHES.includes(t.branch));
 
-      // Column header filters
-      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && extractDate(t.timestamp) === colFilters.date);
-      if (colFilters.branch) tasks = tasks.filter(t => t.branch === colFilters.branch);
-      if (colFilters.issueType) tasks = tasks.filter(t => t.issueType === colFilters.issueType);
-      if (colFilters.hoOrCo) tasks = tasks.filter(t => t.hoOrCo === colFilters.hoOrCo);
+      // Column header filters (multi-select)
+      if (colFilters.date.length) tasks = tasks.filter(t => t.timestamp && colFilters.date.includes(extractDate(t.timestamp)));
+      if (colFilters.branch.length) tasks = tasks.filter(t => colFilters.branch.includes(t.branch));
+      if (colFilters.issueType.length) tasks = tasks.filter(t => colFilters.issueType.includes(t.issueType));
+      if (colFilters.hoOrCo.length) tasks = tasks.filter(t => colFilters.hoOrCo.includes(t.hoOrCo));
 
-      const showStaffCol = !!colFilters.hoOrCo;
+      const showStaffCol = colFilters.hoOrCo.length > 0;
       const totalCols = showStaffCol ? 10 : 9;
 
       const ip = tasks.filter(t => !t.completed).length;
@@ -1180,21 +1217,59 @@ document.addEventListener('DOMContentLoaded', async () => {
       else return;
       if (!vals.length) return;
 
-      const rect = th.getBoundingClientRect();
-      const popup = document.createElement('div');
-      popup.className = 'col-filter-popup'; popup.id = 'colFilterPopup';
-      popup.style.top = (rect.bottom + 4) + 'px'; popup.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+      const currentArr = completedColFilters[col] || [];
+      let selected = [...currentArr];
+
+      const overlay = document.createElement('div');
+      overlay.className = 'col-filter-overlay'; overlay.id = 'colFilterPopup';
       const labels = { date: 'Date', branch: 'Branch', hoOrCo: 'HO/CO', issueType: 'Issue Type' };
-      popup.innerHTML = `<div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
-        <div class="col-filter-list"><div class="col-filter-item" data-val=""><span class="check-mark">${!completedColFilters[col] ? '✓' : ''}</span><span>Show All</span></div>
-        ${vals.map(v => `<div class="col-filter-item ${completedColFilters[col] === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${completedColFilters[col] === v ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}</div>`;
-      document.body.appendChild(popup);
-      popup.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
-      popup.querySelectorAll('.col-filter-item').forEach(item => {
-        item.addEventListener('click', async () => {
-          if (item.dataset.val) completedColFilters[col] = item.dataset.val; else delete completedColFilters[col];
-          th.classList.toggle('filtered', !!item.dataset.val); closeColFilterPopup(); await renderCompletedTable(); renderActiveFilterBar();
+      overlay.innerHTML = `
+        <div class="col-filter-modal">
+          <div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
+          <div class="col-filter-list">
+            <div class="col-filter-item ${selected.length === 0 ? 'selected' : ''}" data-val="__all__"><span class="check-mark">${selected.length === 0 ? '✓' : ''}</span><span>Show All</span></div>
+            ${vals.map(v => `<div class="col-filter-item ${selected.includes(v) ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${selected.includes(v) ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}
+          </div>
+          <div class="col-filter-footer">
+            <button class="btn-filter-clear">Show All</button>
+            <button class="btn-filter-apply">Apply</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      function refreshChecks() {
+        overlay.querySelectorAll('.col-filter-item').forEach(item => {
+          const v = item.dataset.val;
+          const isSelected = v === '__all__' ? selected.length === 0 : selected.includes(v);
+          item.classList.toggle('selected', isSelected);
+          item.querySelector('.check-mark').textContent = isSelected ? '✓' : '';
         });
+      }
+
+      overlay.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
+      overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeColFilterPopup(); });
+      overlay.querySelectorAll('.col-filter-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const v = item.dataset.val;
+          if (v === '__all__') { selected = []; }
+          else {
+            const idx = selected.indexOf(v);
+            if (idx >= 0) selected.splice(idx, 1); else selected.push(v);
+          }
+          refreshChecks();
+        });
+      });
+      overlay.querySelector('.btn-filter-clear').addEventListener('click', async () => {
+        delete completedColFilters[col];
+        th.classList.remove('filtered');
+        closeColFilterPopup();
+        await renderCompletedTable(); renderActiveFilterBar();
+      });
+      overlay.querySelector('.btn-filter-apply').addEventListener('click', async () => {
+        if (selected.length > 0) completedColFilters[col] = [...selected]; else delete completedColFilters[col];
+        th.classList.toggle('filtered', selected.length > 0);
+        closeColFilterPopup();
+        await renderCompletedTable(); renderActiveFilterBar();
       });
     });
   });
@@ -1202,10 +1277,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('click', (e) => { const p = $('colFilterPopup'); if (p && !p.contains(e.target) && !e.target.closest('.th-filterable')) closeColFilterPopup(); });
 
   function renderActiveFilterBar() {
-    const keys = Object.keys(completedColFilters);
+    const keys = Object.keys(completedColFilters).filter(k => completedColFilters[k] && completedColFilters[k].length);
     if (!keys.length) { activeFilterBar.innerHTML = ''; return; }
     const labels = { date: 'Date', branch: 'Branch', hoOrCo: 'HO/CO', issueType: 'Issue Type' };
-    activeFilterBar.innerHTML = keys.map(k => `<span class="active-filter-tag">${labels[k]}: <strong>${esc(k === 'date' ? formatDateDMY(completedColFilters[k]) : completedColFilters[k])}</strong> <span class="filter-remove" data-remove="${k}">✕</span></span>`).join('') + '<span class="clear-all-filters" id="clearAllFilters">Clear all</span>';
+    activeFilterBar.innerHTML = keys.map(k => {
+      const arr = completedColFilters[k];
+      const display = arr.map(v => k === 'date' ? formatDateDMY(v) : v).join(', ');
+      return `<span class="active-filter-tag">${labels[k]}: <strong>${esc(display)}</strong> <span class="filter-remove" data-remove="${k}">✕</span></span>`;
+    }).join('') + '<span class="clear-all-filters" id="clearAllFilters">Clear all</span>';
     activeFilterBar.querySelectorAll('.filter-remove').forEach(el => {
       el.addEventListener('click', async () => { delete completedColFilters[el.dataset.remove]; const th = document.querySelector(`.th-filterable[data-col="${el.dataset.remove}"]`); if (th) th.classList.remove('filtered'); await renderCompletedTable(); renderActiveFilterBar(); });
     });
@@ -1214,9 +1293,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function renderCompletedTable() {
     let tasks = await DataStore.search('', { status: 'completed' });
-    Object.keys(completedColFilters).forEach(col => { const v = completedColFilters[col]; tasks = tasks.filter(t => { if (col === 'branch') return t.branch === v; if (col === 'issueType') return t.issueType === v; if (col === 'hoOrCo') return t.hoOrCo === v; if (col === 'date') return t.timestamp && extractDate(t.timestamp) === v; return true; }); });
+    Object.keys(completedColFilters).forEach(col => { const arr = completedColFilters[col]; if (!arr || !arr.length) return; tasks = tasks.filter(t => { if (col === 'branch') return arr.includes(t.branch); if (col === 'issueType') return arr.includes(t.issueType); if (col === 'hoOrCo') return arr.includes(t.hoOrCo); if (col === 'date') return t.timestamp && arr.includes(extractDate(t.timestamp)); return true; }); });
     renderActiveFilterBar();
-    document.querySelectorAll('.th-filterable[data-col]').forEach(th => th.classList.toggle('filtered', !!completedColFilters[th.dataset.col]));
+    document.querySelectorAll('.th-filterable[data-col]').forEach(th => th.classList.toggle('filtered', !!(completedColFilters[th.dataset.col] && completedColFilters[th.dataset.col].length)));
     if (!tasks.length) { completedTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No completed tasks.</td></tr>'; return; }
     completedTableBody.innerHTML = tasks.map(t => {
       const tc = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[t.issueType] || 'badge-gray';
