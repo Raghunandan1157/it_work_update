@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedStaffId = '';
     let reportStatusFilter = 'all'; // 'all', 'inprogress', 'completed'
     let companyFilter = ''; // '', 'NLPL', 'NMSPL'
-    const colFilters = { date: '', branch: '', issueType: '' };
+    const colFilters = { date: '', branch: '', issueType: '', hoOrCo: '' };
 
     // Company filter buttons
     document.querySelectorAll('.company-filter-btn').forEach(btn => {
@@ -284,27 +284,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       if (companyFilter === 'NLPL') tasks = tasks.filter(t => BRANCHES.includes(t.branch));
       else if (companyFilter === 'NMSPL') tasks = tasks.filter(t => NMSPL_BRANCHES.includes(t.branch));
-      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && t.timestamp.split(' ')[0] === colFilters.date);
+      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && extractDate(t.timestamp) === colFilters.date);
       if (colFilters.branch) tasks = tasks.filter(t => t.branch === colFilters.branch);
       if (colFilters.issueType) tasks = tasks.filter(t => t.issueType === colFilters.issueType);
+      if (colFilters.hoOrCo) tasks = tasks.filter(t => t.hoOrCo === colFilters.hoOrCo);
 
-      const headers = ['Task ID', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Amount'];
-      const rows = tasks.map(t => [
-        t.taskId,
-        t.timestamp ? t.timestamp.split(' ')[0] : '',
-        t.createdBy,
-        t.branch,
-        t.hoOrCo,
-        t.issueType,
-        '"' + (displayIssue(t) || '').replace(/"/g, '""') + '"',
-        t.completed ? 'Completed' : 'In Progress',
-        t.amount || 0
-      ].join(','));
+      const showStaff = !!colFilters.hoOrCo;
+      const headers = showStaff
+        ? ['Task ID', 'Date', 'Created By', 'Branch', 'HO/CO', 'Staff Details', 'Issue Type', 'Issue Description', 'Status', 'Amount']
+        : ['Task ID', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Amount'];
+      const rows = tasks.map(t => {
+        const base = [
+          t.taskId,
+          formatDateDMY(extractDate(t.timestamp)),
+          t.createdBy,
+          t.branch,
+          t.hoOrCo
+        ];
+        if (showStaff) base.push('"' + ((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : '')).replace(/"/g, '""') + '"');
+        base.push(
+          t.issueType,
+          '"' + (displayIssue(t) || '').replace(/"/g, '""') + '"',
+          t.completed ? 'Completed' : 'In Progress',
+          t.amount || 0
+        );
+        return base.join(',');
+      });
       const csv = [headers.join(','), ...rows].join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'nlpl_report_' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.href = url; a.download = 'it_work_update_' + new Date().toISOString().slice(0, 10) + '.csv';
       a.click(); URL.revokeObjectURL(url);
     });
 
@@ -316,9 +326,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const col = th.dataset.rptcol;
         const allTasks = await DataStore.getAll();
         let vals;
-        if (col === 'date') vals = [...new Set(allTasks.map(t => t.timestamp ? t.timestamp.split(' ')[0] : '').filter(Boolean))].sort().reverse();
+        if (col === 'date') vals = [...new Set(allTasks.map(t => extractDate(t.timestamp)).filter(Boolean))].sort().reverse();
         else if (col === 'branch') vals = [...new Set(allTasks.map(t => t.branch).filter(Boolean))].sort();
         else if (col === 'issueType') vals = [...new Set(allTasks.map(t => t.issueType).filter(Boolean))].sort();
+        else if (col === 'hoOrCo') vals = [...new Set(allTasks.map(t => t.hoOrCo).filter(Boolean))].sort();
         else return;
         if (!vals.length) return;
 
@@ -330,12 +341,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         popup.style.top = (rect.bottom + 4) + 'px';
         popup.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
 
-        const labels = { date: 'Date', branch: 'Branch', issueType: 'Issue Type' };
+        const labels = { date: 'Date', branch: 'Branch', issueType: 'Issue Type', hoOrCo: 'HO/CO' };
         popup.innerHTML = `
           <div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
           <div class="col-filter-list">
             <div class="col-filter-item" data-val=""><span class="check-mark">${!currentVal ? '✓' : ''}</span><span>Show All</span></div>
-            ${vals.map(v => `<div class="col-filter-item ${currentVal === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${currentVal === v ? '✓' : ''}</span><span>${esc(v)}</span></div>`).join('')}
+            ${vals.map(v => `<div class="col-filter-item ${currentVal === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${currentVal === v ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}
           </div>`;
         document.body.appendChild(popup);
         popup.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
@@ -366,9 +377,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       else if (companyFilter === 'NMSPL') tasks = tasks.filter(t => NMSPL_BRANCHES.includes(t.branch));
 
       // Column header filters
-      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && t.timestamp.split(' ')[0] === colFilters.date);
+      if (colFilters.date) tasks = tasks.filter(t => t.timestamp && extractDate(t.timestamp) === colFilters.date);
       if (colFilters.branch) tasks = tasks.filter(t => t.branch === colFilters.branch);
       if (colFilters.issueType) tasks = tasks.filter(t => t.issueType === colFilters.issueType);
+      if (colFilters.hoOrCo) tasks = tasks.filter(t => t.hoOrCo === colFilters.hoOrCo);
+
+      const showStaffCol = !!colFilters.hoOrCo;
+      const totalCols = showStaffCol ? 10 : 9;
 
       const ip = tasks.filter(t => !t.completed).length;
       const done = tasks.filter(t => t.completed).length;
@@ -381,8 +396,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="report-summary-card"><div class="report-summary-num" style="color:var(--primary)">₹${totalAmt.toLocaleString('en-IN')}</div><div class="report-summary-label">Total Amount</div></div>
       `;
 
+      // Dynamically add/remove Staff Details header
+      const thead = $('reportTableWrap').querySelector('thead tr');
+      const existingStaffTh = thead.querySelector('[data-col="staffDetails"]');
+      if (showStaffCol && !existingStaffTh) {
+        const hoCoTh = thead.querySelector('[data-rptcol="hoOrCo"]');
+        const staffTh = document.createElement('th');
+        staffTh.setAttribute('data-col', 'staffDetails');
+        staffTh.textContent = 'Staff Details';
+        hoCoTh.after(staffTh);
+      } else if (!showStaffCol && existingStaffTh) {
+        existingStaffTh.remove();
+      }
+
       if (tasks.length === 0) {
-        $('reportTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">No tasks match your filters.</td></tr>';
+        $('reportTableBody').innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;padding:40px;color:var(--text-muted)">No tasks match your filters.</td></tr>`;
         return;
       }
 
@@ -391,12 +419,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const hocoCls = t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
         const statusCls = t.completed ? 'badge-success' : 'badge-warning';
         const statusTxt = t.completed ? '✅ Done' : '⏳ Active';
+        const staffCol = showStaffCol ? `<td>${esc((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : ''))}</td>` : '';
         return `<tr data-rptview="${t.taskId}">
           <td class="task-id-cell">${esc(t.taskId)}</td>
-          <td>${esc(t.timestamp ? t.timestamp.split(' ')[0] : '')}</td>
+          <td>${esc(formatDateDMY(extractDate(t.timestamp)))}</td>
           <td>${esc(t.createdBy)}</td>
           <td>${esc(t.branch)}</td>
           <td><span class="badge ${hocoCls}">${esc(t.hoOrCo)}</span></td>
+          ${staffCol}
           <td><span class="badge ${typeCls}">${esc(t.issueType)}</span></td>
           <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(displayIssue(t))}</td>
           <td><span class="badge ${statusCls}">${statusTxt}</span></td>
@@ -600,7 +630,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Area chart: completions per day
       const dayMap = {};
       completed.forEach(t => {
-        const day = t.completedAt ? t.completedAt.split(' ')[0] : (t.timestamp ? t.timestamp.split(' ')[0] : null);
+        const day = extractDate(t.completedAt) || extractDate(t.timestamp) || null;
         if (!day) return;
         dayMap[day] = (dayMap[day] || 0) + 1;
       });
@@ -1143,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const col = th.dataset.col;
       const completed = await DataStore.search('', { status: 'completed' });
       let vals;
-      if (col === 'date') vals = [...new Set(completed.map(t => t.timestamp ? t.timestamp.split(' ')[0] : '').filter(Boolean))].sort().reverse();
+      if (col === 'date') vals = [...new Set(completed.map(t => extractDate(t.timestamp)).filter(Boolean))].sort().reverse();
       else if (col === 'branch') vals = [...new Set(completed.map(t => t.branch).filter(Boolean))].sort();
       else if (col === 'hoOrCo') vals = [...new Set(completed.map(t => t.hoOrCo).filter(Boolean))];
       else if (col === 'issueType') vals = [...new Set(completed.map(t => t.issueType).filter(Boolean))];
@@ -1157,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const labels = { date: 'Date', branch: 'Branch', hoOrCo: 'HO/CO', issueType: 'Issue Type' };
       popup.innerHTML = `<div class="col-filter-header"><span>Filter: ${labels[col]}</span><button class="popup-close">✕</button></div>
         <div class="col-filter-list"><div class="col-filter-item" data-val=""><span class="check-mark">${!completedColFilters[col] ? '✓' : ''}</span><span>Show All</span></div>
-        ${vals.map(v => `<div class="col-filter-item ${completedColFilters[col] === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${completedColFilters[col] === v ? '✓' : ''}</span><span>${esc(v)}</span></div>`).join('')}</div>`;
+        ${vals.map(v => `<div class="col-filter-item ${completedColFilters[col] === v ? 'selected' : ''}" data-val="${esc(v)}"><span class="check-mark">${completedColFilters[col] === v ? '✓' : ''}</span><span>${col === 'date' ? formatDateDMY(v) : esc(v)}</span></div>`).join('')}</div>`;
       document.body.appendChild(popup);
       popup.querySelector('.popup-close').addEventListener('click', closeColFilterPopup);
       popup.querySelectorAll('.col-filter-item').forEach(item => {
@@ -1175,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const keys = Object.keys(completedColFilters);
     if (!keys.length) { activeFilterBar.innerHTML = ''; return; }
     const labels = { date: 'Date', branch: 'Branch', hoOrCo: 'HO/CO', issueType: 'Issue Type' };
-    activeFilterBar.innerHTML = keys.map(k => `<span class="active-filter-tag">${labels[k]}: <strong>${esc(completedColFilters[k])}</strong> <span class="filter-remove" data-remove="${k}">✕</span></span>`).join('') + '<span class="clear-all-filters" id="clearAllFilters">Clear all</span>';
+    activeFilterBar.innerHTML = keys.map(k => `<span class="active-filter-tag">${labels[k]}: <strong>${esc(k === 'date' ? formatDateDMY(completedColFilters[k]) : completedColFilters[k])}</strong> <span class="filter-remove" data-remove="${k}">✕</span></span>`).join('') + '<span class="clear-all-filters" id="clearAllFilters">Clear all</span>';
     activeFilterBar.querySelectorAll('.filter-remove').forEach(el => {
       el.addEventListener('click', async () => { delete completedColFilters[el.dataset.remove]; const th = document.querySelector(`.th-filterable[data-col="${el.dataset.remove}"]`); if (th) th.classList.remove('filtered'); await renderCompletedTable(); renderActiveFilterBar(); });
     });
@@ -1184,14 +1214,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function renderCompletedTable() {
     let tasks = await DataStore.search('', { status: 'completed' });
-    Object.keys(completedColFilters).forEach(col => { const v = completedColFilters[col]; tasks = tasks.filter(t => { if (col === 'branch') return t.branch === v; if (col === 'issueType') return t.issueType === v; if (col === 'hoOrCo') return t.hoOrCo === v; if (col === 'date') return t.timestamp && t.timestamp.startsWith(v); return true; }); });
+    Object.keys(completedColFilters).forEach(col => { const v = completedColFilters[col]; tasks = tasks.filter(t => { if (col === 'branch') return t.branch === v; if (col === 'issueType') return t.issueType === v; if (col === 'hoOrCo') return t.hoOrCo === v; if (col === 'date') return t.timestamp && extractDate(t.timestamp) === v; return true; }); });
     renderActiveFilterBar();
     document.querySelectorAll('.th-filterable[data-col]').forEach(th => th.classList.toggle('filtered', !!completedColFilters[th.dataset.col]));
     if (!tasks.length) { completedTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No completed tasks.</td></tr>'; return; }
     completedTableBody.innerHTML = tasks.map(t => {
       const tc = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[t.issueType] || 'badge-gray';
       const hc = t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
-      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(t.timestamp ? t.timestamp.split(' ')[0] : '')}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(displayIssue(t))}</td><td>₹${(t.amount || 0).toLocaleString('en-IN')}</td></tr>`;
+      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(formatDateDMY(extractDate(t.timestamp)))}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(displayIssue(t))}</td><td>₹${(t.amount || 0).toLocaleString('en-IN')}</td></tr>`;
     }).join('');
     completedTableBody.querySelectorAll('[data-view]').forEach(row => { row.addEventListener('click', () => sharedOpenViewSummary(row.dataset.view)); });
   }
@@ -1273,6 +1303,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   function closeColFilterPopup() { const p = $('colFilterPopup'); if (p) p.remove(); }
 
   function esc(str) { if (!str && str !== 0) return ''; return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  function extractDate(ts) {
+    if (!ts) return '';
+    return ts.includes('T') ? ts.split('T')[0] : ts.split(' ')[0];
+  }
+
+  function formatDateDMY(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr;
+  }
 
   // Display issue: category + description (backward-compatible with old tasks)
   function displayIssue(task) {
