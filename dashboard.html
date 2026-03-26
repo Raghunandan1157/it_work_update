@@ -109,6 +109,21 @@
 
       <!-- ═══════ STAFF VIEW ═══════ -->
       <div id="staffView">
+        <!-- COMPANY SELECTOR -->
+        <div class="company-selector-card" id="companySelector">
+          <div class="company-selector-label">Select Company</div>
+          <div class="company-buttons">
+            <button class="company-btn" id="btnNLPL" data-company="NLPL">
+              <span class="company-btn-icon">🏢</span>
+              <span class="company-btn-text">NLPL</span>
+            </button>
+            <button class="company-btn" id="btnNMSPL" data-company="NMSPL">
+              <span class="company-btn-icon">🏭</span>
+              <span class="company-btn-text">NMSPL</span>
+            </button>
+          </div>
+          <div class="company-error hidden" id="companyError">⚠️ Please select a company first!</div>
+        </div>
         <div class="section-title" id="sectionTitle">⏳ Tasks In Progress</div>
 
         <div class="completed-filters hidden" id="completedFilters">

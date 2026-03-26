@@ -27,6 +27,33 @@ function getEmployeesByLocation(location) {
   return EMPLOYEES.filter(e => e.location === location);
 }
 
+const NMSPL_BRANCHES = [];
+const NMSPL_EMPLOYEES = [];
+
+async function loadNmsplBranches() {
+  const { data } = await db
+    .from('nmspl_employees')
+    .select('location');
+  NMSPL_BRANCHES.length = 0;
+  if (data) {
+    const unique = [...new Set(data.map(e => e.location).filter(Boolean))].sort();
+    unique.forEach(b => NMSPL_BRANCHES.push(b));
+  }
+}
+
+async function loadNmsplEmployees() {
+  const { data } = await db
+    .from('nmspl_employees')
+    .select('emp_id, name, location')
+    .order('name');
+  NMSPL_EMPLOYEES.length = 0;
+  if (data) data.forEach(e => NMSPL_EMPLOYEES.push(e));
+}
+
+function getNmsplEmployeesByLocation(location) {
+  return NMSPL_EMPLOYEES.filter(e => e.location === location);
+}
+
 // Issue history (autocomplete from DB)
 const IssueHistory = {
   async get(userId, category) {

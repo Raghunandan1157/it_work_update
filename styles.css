@@ -609,6 +609,80 @@ select.form-control { cursor: pointer; }
   50% { transform: translateY(-8px); }
 }
 
+/* COMPANY SELECTOR */
+.company-selector-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.company-selector-card.shake {
+  animation: shake 0.4s ease;
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+.company-selector-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+}
+.company-buttons {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.company-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.company-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.company-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: translateY(-2px);
+}
+.company-btn.active .company-btn-icon {
+  filter: grayscale(0);
+}
+.company-btn-icon {
+  font-size: 1.3rem;
+}
+.company-btn-text {
+  font-size: 0.95rem;
+}
+.company-error {
+  margin-top: 12px;
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: shake 0.3s ease;
+}
+
 /* FLOATING ACTION BUTTON */
 .fab {
   position: fixed;

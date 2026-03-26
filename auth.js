@@ -11,7 +11,7 @@ const Auth = {
       .select('user_id, name, role, ho_or_co')
       .eq('user_id', userId.trim())
       .eq('password', password)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return { success: false, message: 'Invalid User ID or Password.' };
@@ -80,7 +80,7 @@ const Auth = {
       .from('it_solutions_users')
       .select('user_id, name, role, ho_or_co')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
 

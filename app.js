@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!user) return;
 
   // Load branches, employees, and fix stale session — all in parallel
-  const initPromises = [loadBranches(), loadEmployees()];
+  const initPromises = [loadBranches(), loadEmployees(), loadNmsplBranches(), loadNmsplEmployees()];
   if (!user.hoOrCo) initPromises.push(Auth.getUserById(user.id).then(k => {
     user.hoOrCo = k ? k.hoOrCo : 'CO';
     localStorage.setItem('nlpl_auth_user', JSON.stringify(user));
@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await Promise.all(initPromises);
 
   const isAdmin = user.role === 'admin';
+
+  // ─── COMPANY SELECTOR STATE ───
+  let selectedCompany = null;
 
   // ─── COMMON DOM ──────────────────────────────────────────────────────────────
   const sidebar = $('sidebar'), sidebarToggle = $('sidebarToggle'), sidebarBackdrop = $('sidebarBackdrop');
@@ -39,6 +42,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   mobileMenuBtn.addEventListener('click', () => { sidebar.classList.toggle('mobile-open'); sidebarBackdrop.classList.toggle('show'); });
   sidebarBackdrop.addEventListener('click', () => { sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show'); });
   logoutBtn.addEventListener('click', () => { if (confirm('Log out?')) Auth.logout(); });
+
+  // ─── COMPANY SELECTOR ─────────────────────────────────────────────────────
+  document.querySelectorAll('.company-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedCompany = btn.dataset.company;
+      const err = $('companyError');
+      if (err) err.classList.add('hidden');
+
+      // Update branch dropdown in wizard based on selected company
+      populateBranchDropdown();
+      // Refresh the view
+      renderAll();
+    });
+  });
+
+  function populateBranchDropdown() {
+    const branches = selectedCompany === 'NMSPL' ? NMSPL_BRANCHES : BRANCHES;
+    const fBranch = $('fBranch');
+    if (fBranch) {
+      fBranch.innerHTML = '<option value="">-- Select Branch --</option>';
+      branches.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b;
+        o.textContent = b;
+        fBranch.appendChild(o);
+      });
+    }
+  }
+
+  function getActiveEmployeesByLocation(location) {
+    return selectedCompany === 'NMSPL'
+      ? getNmsplEmployeesByLocation(location)
+      : getEmployeesByLocation(location);
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // ADMIN VIEW
@@ -674,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function populateStaffDropdown(location) {
-    const employees = getEmployeesByLocation(location);
+    const employees = getActiveEmployeesByLocation(location);
     fStaffName.innerHTML = '<option value="">-- Select Staff --</option>';
     employees.forEach(e => {
       const o = document.createElement('option');
@@ -764,7 +803,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   fAmount.addEventListener('blur', () => { if (!fAmount.value) fAmount.value = 0; });
 
   // Wizard
-  fab.addEventListener('click', openAddWizard);
+  fab.addEventListener('click', () => {
+    if (!selectedCompany) {
+      // Shake the company selector card and show error
+      const card = $('companySelector');
+      const err = $('companyError');
+      if (card) {
+        card.classList.remove('shake');
+        void card.offsetWidth; // reflow to restart animation
+        card.classList.add('shake');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (err) err.classList.remove('hidden');
+      setTimeout(() => { if (err) err.classList.add('hidden'); }, 3000);
+      return;
+    }
+    openAddWizard();
+  });
   modalClose.addEventListener('click', closeModal);
   btnCancel.addEventListener('click', closeModal);
   // Do not close modal on backdrop click — user might lose data
@@ -807,14 +862,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Populate branch dropdown in edit sheet
   function populateEditBranches() {
     edBranch.innerHTML = '<option value="">-- Select --</option>';
-    BRANCHES.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; edBranch.appendChild(o); });
+    (selectedCompany === 'NMSPL' ? NMSPL_BRANCHES : BRANCHES).forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; edBranch.appendChild(o); });
   }
 
   edBranch.addEventListener('change', () => {
     if (edBranch.value && isHoCo(edBranch.value)) {
       $('edStaffSection').classList.remove('hidden');
       $('edEmpIdField').classList.remove('hidden');
-      const emps = getEmployeesByLocation(edBranch.value);
+      const emps = getActiveEmployeesByLocation(edBranch.value);
       edStaff.innerHTML = '<option value="">-- Select --</option>';
       emps.forEach(e => {
         const o = document.createElement('option');
@@ -1051,10 +1106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     [fDate, fTime, fBranch, fHoCo, fStaffName, fStaffId, fIssueDesc, fSolution, fDetailedDesc, fAmount].forEach(el => { if (el) el.disabled = ro; });
     boxSoftware.style.pointerEvents = ro ? 'none' : ''; boxHardware.style.pointerEvents = ro ? 'none' : '';
   }
-  function populateBranchDropdown() {
-    fBranch.innerHTML = '<option value="">-- Select Branch --</option>';
-    BRANCHES.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; fBranch.appendChild(o); });
-  }
+  // populateBranchDropdown is defined at the top-level scope (handles NLPL/NMSPL switching)
 
   async function renderAll() { await Promise.all([renderTasks(), updateNavBadges()]); }
   async function updateNavBadges() {
