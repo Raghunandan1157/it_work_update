@@ -113,6 +113,7 @@ function toDb(task) {
     ho_or_co: task.hoOrCo,
     staff_name: task.staffName || null,
     staff_id: task.staffId || null,
+    staff_designation: task.staffDesignation || null,
     issue_type: task.issueType,
     issue_description: task.issueDescription,
     issue_category: task.issueCategory || null,
@@ -134,6 +135,7 @@ function fromDb(row) {
     hoOrCo: row.ho_or_co,
     staffName: row.staff_name,
     staffId: row.staff_id,
+    staffDesignation: row.staff_designation,
     issueType: row.issue_type,
     issueDescription: row.issue_description,
     issueCategory: row.issue_category || null,
@@ -175,6 +177,7 @@ const DataStore = {
     if (updates.hoOrCo !== undefined)              dbUpdates.ho_or_co = updates.hoOrCo;
     if (updates.staffName !== undefined)           dbUpdates.staff_name = updates.staffName;
     if (updates.staffId !== undefined)             dbUpdates.staff_id = updates.staffId;
+    if (updates.staffDesignation !== undefined)    dbUpdates.staff_designation = updates.staffDesignation;
     if (updates.issueType !== undefined)           dbUpdates.issue_type = updates.issueType;
     if (updates.issueDescription !== undefined)    dbUpdates.issue_description = updates.issueDescription;
     if (updates.issueCategory !== undefined)       dbUpdates.issue_category = updates.issueCategory;
@@ -230,6 +233,7 @@ const DataStore = {
           `detailed_description.ilike.${pattern}`,
           `staff_name.ilike.${pattern}`,
           `staff_id.ilike.${pattern}`,
+          `staff_designation.ilike.${pattern}`,
           `branch.ilike.${pattern}`,
         ].join(',')
       );

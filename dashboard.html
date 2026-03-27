@@ -297,11 +297,21 @@
         </div>
         <div class="form-group"><label class="form-label">Branch <span style="color:var(--danger)">*</span></label><select class="form-control" id="fBranch"><option value="">-- Select Branch --</option></select><span class="form-error" id="errBranch"></span></div>
         <div class="form-group"><label class="form-label">HO / CO</label><input class="form-control" type="text" id="fHoCo" readonly /><span class="text-muted" style="font-size:0.75rem;margin-top:2px">Auto-assigned based on your login</span></div>
-        <div id="staffSection" class="hidden">
+        <div id="staffSectionHoCo" class="hidden">
           <div class="section-title" style="font-size:0.85rem">Staff Details</div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Staff Name <span style="color:var(--danger)">*</span></label><select class="form-control" id="fStaffName"><option value="">-- Select Staff --</option></select><span class="form-error" id="errStaffName"></span></div>
             <div class="form-group"><label class="form-label">Employee ID</label><input class="form-control" type="text" id="fStaffId" readonly /><span class="form-error" id="errStaffId"></span></div>
+          </div>
+        </div>
+        <div id="staffSectionBranch" class="hidden">
+          <div class="section-title" style="font-size:0.85rem">Staff Details <span style="color:var(--text-muted);font-weight:normal">(Optional)</span></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Staff Name</label><input class="form-control" type="text" id="fBranchStaffName" placeholder="Enter staff name" /></div>
+            <div class="form-group"><label class="form-label">Designation</label><input class="form-control" type="text" id="fBranchDesignation" placeholder="Enter designation" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Employee ID</label><input class="form-control" type="text" id="fBranchStaffId" placeholder="Enter employee ID" /></div>
           </div>
         </div>
       </div>
@@ -393,13 +403,27 @@
             <div class="detail-label">HO / CO</div>
             <div class="detail-value" id="edHoCo"></div>
           </div>
-          <div class="detail-field hidden" id="edStaffSection">
-            <div class="detail-label">Staff</div>
+          <div class="detail-field hidden" id="edStaffSectionHoCo">
+            <div class="detail-label">Staff <span style="color:var(--danger)">*</span></div>
             <select class="form-control form-control-sm" id="edStaff"></select>
           </div>
-          <div class="detail-field hidden" id="edEmpIdField">
+          <div class="detail-field hidden" id="edEmpIdFieldHoCo">
             <div class="detail-label">Employee ID</div>
             <div class="detail-value" id="edEmpId"></div>
+          </div>
+          <div id="edStaffSectionBranch" class="hidden">
+            <div class="detail-field">
+              <div class="detail-label">Staff Name <span style="color:var(--text-muted);font-size:0.75rem">(Optional)</span></div>
+              <input class="form-control form-control-sm" type="text" id="edBranchStaffName" placeholder="Enter staff name" />
+            </div>
+            <div class="detail-field">
+              <div class="detail-label">Designation <span style="color:var(--text-muted);font-size:0.75rem">(Optional)</span></div>
+              <input class="form-control form-control-sm" type="text" id="edBranchDesignation" placeholder="Enter designation" />
+            </div>
+            <div class="detail-field">
+              <div class="detail-label">Employee ID <span style="color:var(--text-muted);font-size:0.75rem">(Optional)</span></div>
+              <input class="form-control form-control-sm" type="text" id="edBranchStaffId" placeholder="Enter employee ID" />
+            </div>
           </div>
           <div class="detail-field">
             <div class="detail-label">Issue Type</div>

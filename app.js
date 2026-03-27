@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           t.branch,
           t.hoOrCo
         ];
-        if (showStaff) base.push((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : ''));
+        if (showStaff) base.push((t.staffName || '') + (t.staffDesignation ? ' — ' + t.staffDesignation : '') + (t.staffId ? ' (' + t.staffId + ')' : ''));
         base.push(
           t.issueType,
           displayIssue(t) || '',
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const hocoCls = t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
         const statusCls = t.completed ? 'badge-success' : 'badge-warning';
         const statusTxt = t.completed ? '✅ Done' : '⏳ Active';
-        const staffCol = showStaffCol ? `<td>${esc((t.staffName || '') + (t.staffId ? ' (' + t.staffId + ')' : ''))}</td>` : '';
+        const staffCol = showStaffCol ? `<td>${esc((t.staffName || '') + (t.staffDesignation ? ' — ' + t.staffDesignation : '') + (t.staffId ? ' (' + t.staffId + ')' : ''))}</td>` : '';
         return `<tr data-rptview="${t.taskId}">
           <td class="task-id-cell">${esc(t.taskId)}</td>
           <td>${esc(formatDateDMY(extractDate(t.timestamp)))}</td>
@@ -739,7 +739,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const stepperBar = $('stepperBar');
   const btnPrev = $('btnPrev'), btnNext = $('btnNext'), btnCancel = $('btnCancel'), btnSave = $('btnSave'), btnComplete = $('btnComplete');
   const fDate = $('fDate'), fTime = $('fTime'), fBranch = $('fBranch'), fHoCo = $('fHoCo');
-  const staffSection = $('staffSection'), fStaffName = $('fStaffName'), fStaffId = $('fStaffId');
+  const staffSectionHoCo = $('staffSectionHoCo'), fStaffName = $('fStaffName'), fStaffId = $('fStaffId');
+  const staffSectionBranch = $('staffSectionBranch'), fBranchStaffName = $('fBranchStaffName'), fBranchDesignation = $('fBranchDesignation'), fBranchStaffId = $('fBranchStaffId');
   const fIssueType = $('fIssueType'), fIssueCategory = $('fIssueCategory'), fIssueDesc = $('fIssueDesc'), issueOtherWrap = $('issueOtherWrap'), fSolution = $('fSolution');
   const fDetailedDesc = $('fDetailedDesc'), fAmount = $('fAmount');
   const issueAutocomplete = $('issueAutocomplete'); document.body.appendChild(issueAutocomplete);
@@ -789,12 +790,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Branch → staff dropdown (only for HO/CO)
   fBranch.addEventListener('change', () => {
     if (fBranch.value && isHoCo(fBranch.value)) {
-      staffSection.classList.remove('hidden');
+      staffSectionHoCo.classList.remove('hidden');
+      staffSectionBranch.classList.add('hidden');
+      fBranchStaffName.value = ''; fBranchDesignation.value = ''; fBranchStaffId.value = '';
       populateStaffDropdown(fBranch.value);
+    } else if (fBranch.value) {
+      staffSectionBranch.classList.remove('hidden');
+      staffSectionHoCo.classList.add('hidden');
+      fStaffName.value = ''; fStaffId.value = '';
     } else {
-      staffSection.classList.add('hidden');
-      fStaffName.value = '';
-      fStaffId.value = '';
+      staffSectionHoCo.classList.add('hidden');
+      staffSectionBranch.classList.add('hidden');
+      fStaffName.value = ''; fStaffId.value = '';
+      fBranchStaffName.value = ''; fBranchDesignation.value = ''; fBranchStaffId.value = '';
     }
   });
 
@@ -953,8 +961,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   edBranch.addEventListener('change', () => {
     if (edBranch.value && isHoCo(edBranch.value)) {
-      $('edStaffSection').classList.remove('hidden');
-      $('edEmpIdField').classList.remove('hidden');
+      $('edStaffSectionHoCo').classList.remove('hidden');
+      $('edEmpIdFieldHoCo').classList.remove('hidden');
+      $('edStaffSectionBranch').classList.add('hidden');
+      $('edBranchStaffName').value = ''; $('edBranchDesignation').value = ''; $('edBranchStaffId').value = '';
       const emps = getActiveEmployeesByLocation(edBranch.value);
       edStaff.innerHTML = '<option value="">-- Select --</option>';
       emps.forEach(e => {
@@ -962,9 +972,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         o.value = e.name; o.textContent = `${e.name} (${e.emp_id})`; o.dataset.empId = e.emp_id;
         edStaff.appendChild(o);
       });
+    } else if (edBranch.value) {
+      $('edStaffSectionBranch').classList.remove('hidden');
+      $('edStaffSectionHoCo').classList.add('hidden');
+      $('edEmpIdFieldHoCo').classList.add('hidden');
+      edStaff.innerHTML = '<option value="">-- Select --</option>';
+      edStaff.value = '';
     } else {
-      $('edStaffSection').classList.add('hidden');
-      $('edEmpIdField').classList.add('hidden');
+      $('edStaffSectionHoCo').classList.add('hidden');
+      $('edEmpIdFieldHoCo').classList.add('hidden');
+      $('edStaffSectionBranch').classList.add('hidden');
       edStaff.innerHTML = '<option value="">-- Select --</option>';
       edStaff.value = '';
     }
@@ -1021,8 +1038,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateEditBranches();
     edBranch.value = task.branch || '';
     edBranch.dispatchEvent(new Event('change'));
-    edStaff.value = task.staffName || '';
-    edStaff.dispatchEvent(new Event('change'));
+    if (isHoCo(task.branch)) {
+      edStaff.value = task.staffName || '';
+      edStaff.dispatchEvent(new Event('change'));
+    } else {
+      $('edBranchStaffName').value = task.staffName || '';
+      $('edBranchDesignation').value = task.staffDesignation || '';
+      $('edBranchStaffId').value = task.staffId || '';
+    }
 
     edHoCo.textContent = task.hoOrCo || user.hoOrCo;
     edIssueType.value = task.issueType || 'Software';
@@ -1059,13 +1082,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getEditFormData() {
+    const isHoCoEdit = isHoCo(edBranch.value);
     const staffSel = edStaff.options[edStaff.selectedIndex];
     return {
       timestamp: `${edDate.value} ${edTime.value}`,
       branch: edBranch.value,
       hoOrCo: edHoCo.textContent,
-      staffName: edStaff.value,
-      staffId: staffSel && staffSel.dataset.empId ? staffSel.dataset.empId : '',
+      staffName: isHoCoEdit ? edStaff.value : $('edBranchStaffName').value.trim(),
+      staffId: isHoCoEdit ? (staffSel && staffSel.dataset.empId ? staffSel.dataset.empId : '') : $('edBranchStaffId').value.trim(),
+      staffDesignation: isHoCoEdit ? '' : $('edBranchDesignation').value.trim(),
       issueType: edIssueType.value,
       issueCategory: edIssueCategory.value,
       issueDescription: edIssueDesc.value.trim(),
@@ -1078,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function validateEditForm() {
     $('editError').textContent = '';
     if (!edBranch.value) { $('editError').textContent = 'Select a branch.'; return false; }
-    if (isHoCo(edBranch.value) && !edStaff.value) { $('editError').textContent = 'Select a staff member.'; return false; }
+    if (isHoCo(edBranch.value) && !edStaff.value) { $('editError').textContent = 'Select a staff member for HO/CO.'; return false; }
     if (!edIssueCategory.value) { $('editError').textContent = 'Select an issue category.'; return false; }
     if (edIssueCategory.value === 'Other' && !edIssueDesc.value.trim()) { $('editError').textContent = 'Describe the issue.'; return false; }
     if (!edSolution.value.trim()) { $('editError').textContent = 'Solution is required.'; return false; }
@@ -1143,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="detail-field"><div class="detail-label">Date & Time</div><div class="detail-value">${esc(fDate.value)} ${esc(fTime.value)}</div></div>
       <div class="detail-field"><div class="detail-label">Branch</div><div class="detail-value">${esc(fBranch.value)}</div></div>
       <div class="detail-field"><div class="detail-label">HO / CO</div><div class="detail-value">${esc(fHoCo.value)}</div></div>
-      ${fStaffName.value ? `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${esc(fStaffName.value)} (${esc(fStaffId.value)})</div></div>` : ''}
+      ${(() => { const hoCoR = isHoCo(fBranch.value); const sn = hoCoR ? fStaffName.value : fBranchStaffName.value; const si = hoCoR ? fStaffId.value : fBranchStaffId.value; const sd = hoCoR ? '' : fBranchDesignation.value; if (!sn) return ''; let staffTxt = esc(sn); if (sd) staffTxt += ' — ' + esc(sd); if (si) staffTxt += ' (' + esc(si) + ')'; return `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${staffTxt}</div></div>`; })()}
       <div class="detail-field"><div class="detail-label">Issue Type</div><div class="detail-value">${esc(fIssueType.value)}</div></div>
       <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">₹${amt.toLocaleString('en-IN')}</div></div>
     </div><div style="margin-top:10px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:3px">${esc(fIssueCategory.value === 'Other' ? fIssueDesc.value : (fIssueDesc.value.trim() ? fIssueCategory.value + ' — ' + fIssueDesc.value : fIssueCategory.value))}</div></div>
@@ -1152,7 +1177,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function buildTaskFromForm() {
     const taskId = state.editingTaskId || await generateTaskId();
-    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: fStaffName.value.trim(), staffId: fStaffId.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
+    const hoCoForm = isHoCo(fBranch.value);
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: hoCoForm ? fStaffName.value.trim() : fBranchStaffName.value.trim(), staffId: hoCoForm ? fStaffId.value.trim() : fBranchStaffId.value.trim(), staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
   var saving = false;
   async function handleSave() {
@@ -1181,15 +1207,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function resetForm() {
-    [fDate, fTime, fBranch, fStaffName, fStaffId, fIssueType, fIssueCategory, fIssueDesc, fSolution, fDetailedDesc].forEach(el => { if (el) el.value = ''; });
-    fHoCo.value = user.hoOrCo || 'CO'; fAmount.value = 0; staffSection.classList.add('hidden'); issueOtherWrap.classList.add('hidden');
+    [fDate, fTime, fBranch, fStaffName, fStaffId, fBranchStaffName, fBranchDesignation, fBranchStaffId, fIssueType, fIssueCategory, fIssueDesc, fSolution, fDetailedDesc].forEach(el => { if (el) el.value = ''; });
+    fHoCo.value = user.hoOrCo || 'CO'; fAmount.value = 0; staffSectionHoCo.classList.add('hidden'); staffSectionBranch.classList.add('hidden'); issueOtherWrap.classList.add('hidden');
     boxSoftware.classList.remove('selected'); boxHardware.classList.remove('selected');
     state.selectedIssueTypes = []; clearAllErrors();
     if (solutionWordCount) solutionWordCount.textContent = '0'; if (descWordCount) descWordCount.textContent = '0';
     reviewSummary.innerHTML = '';
   }
   function setFormReadonly(ro) {
-    [fDate, fTime, fBranch, fHoCo, fStaffName, fStaffId, fIssueDesc, fSolution, fDetailedDesc, fAmount].forEach(el => { if (el) el.disabled = ro; });
+    [fDate, fTime, fBranch, fHoCo, fStaffName, fStaffId, fBranchStaffName, fBranchDesignation, fBranchStaffId, fIssueDesc, fSolution, fDetailedDesc, fAmount].forEach(el => { if (el) el.disabled = ro; });
     boxSoftware.style.pointerEvents = ro ? 'none' : ''; boxHardware.style.pointerEvents = ro ? 'none' : '';
   }
   // populateBranchDropdown is defined at the top-level scope (handles NLPL/NMSPL switching)
@@ -1326,7 +1352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderTaskCard(task) {
     const tb = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[task.issueType] || 'badge-gray';
     const hb = task.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
-    const staff = task.staffName ? `<div class="task-field"><span class="task-field-label">Staff</span><span class="task-field-value">${esc(task.staffName)} (${esc(task.staffId)})</span></div>` : '';
+    const staff = task.staffName ? `<div class="task-field"><span class="task-field-label">Staff</span><span class="task-field-value">${esc(task.staffName)}${task.staffDesignation ? ' — ' + esc(task.staffDesignation) : ''}${task.staffId ? ' (' + esc(task.staffId) + ')' : ''}</span></div>` : '';
     return `<div class="task-card"><div class="task-status-bar"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span></div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div></div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button><button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Completed</button></div></div>`;
   }
 
@@ -1361,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function sharedOpenViewSummary(taskId) {
     const t = await DataStore.getById(taskId); if (!t) return;
     viewTitleEl.textContent = '📄 ' + t.taskId;
-    const staff = t.staffName ? `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${esc(t.staffName)} (${esc(t.staffId)})</div></div>` : '';
+    const staff = t.staffName ? `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${esc(t.staffName)}${t.staffDesignation ? ' — ' + esc(t.staffDesignation) : ''}${t.staffId ? ' (' + esc(t.staffId) + ')' : ''}</div></div>` : '';
     const desc = t.detailedDescription ? `<div style="margin-top:14px"><div class="detail-label">Detailed Description</div><div class="detail-value" style="margin-top:4px;white-space:pre-wrap;max-height:180px;overflow-y:auto">${esc(t.detailedDescription)}</div></div>` : '';
     viewBody.innerHTML = `<div class="review-summary"><div class="detail-grid">
       <div class="detail-field"><div class="detail-label">Task ID</div><div class="detail-value mono">${esc(t.taskId)}</div></div>
