@@ -54,8 +54,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Update branch dropdown in wizard based on selected company
       populateBranchDropdown();
-      // Refresh the view
-      renderAll();
+      // Refresh the view if in staff mode (renderAll is scoped to staff view)
+      if (typeof renderAll === 'function') renderAll();
     });
   });
 
