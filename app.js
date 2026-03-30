@@ -1222,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function renderAll() { await Promise.all([renderTasks(), updateNavBadges()]); }
   async function updateNavBadges() {
-    const s = await DataStore.getStats();
+    const s = await DataStore.getStats(user.name);
     $('navBadgeInProgress').textContent = s.inProgress; $('navBadgeCompleted').textContent = s.completed;
     $('navBadgeSoftware').textContent = s.software; $('navBadgeHardware').textContent = s.hardware; $('navBadgeBoth').textContent = s.both;
   }
@@ -1234,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     th.addEventListener('click', async (e) => {
       e.stopPropagation(); closeColFilterPopup();
       const col = th.dataset.col;
-      const completed = await DataStore.search('', { status: 'completed' });
+      const completed = await DataStore.search('', { status: 'completed', createdBy: user.name });
       let vals;
       if (col === 'date') vals = [...new Set(completed.map(t => extractDate(t.timestamp)).filter(Boolean))].sort().reverse();
       else if (col === 'branch') vals = [...new Set(completed.map(t => t.branch).filter(Boolean))].sort();
@@ -1318,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function renderCompletedTable() {
-    let tasks = await DataStore.search('', { status: 'completed' });
+    let tasks = await DataStore.search('', { status: 'completed', createdBy: user.name });
     Object.keys(completedColFilters).forEach(col => { const arr = completedColFilters[col]; if (!arr || !arr.length) return; tasks = tasks.filter(t => { if (col === 'branch') return arr.includes(t.branch); if (col === 'issueType') return arr.includes(t.issueType); if (col === 'hoOrCo') return arr.includes(t.hoOrCo); if (col === 'date') return t.timestamp && arr.includes(extractDate(t.timestamp)); return true; }); });
     renderActiveFilterBar();
     document.querySelectorAll('.th-filterable[data-col]').forEach(th => th.classList.toggle('filtered', !!(completedColFilters[th.dataset.col] && completedColFilters[th.dataset.col].length)));
@@ -1340,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     taskGrid.classList.toggle('hidden', isCompleted); completedFilters.classList.toggle('hidden', !isCompleted); completedTableWrap.classList.toggle('hidden', !isCompleted);
     if (isCompleted) { await renderCompletedTable(); } else {
-      let tasks = await DataStore.search('', { status: 'inprogress' });
+      let tasks = await DataStore.search('', { status: 'inprogress', createdBy: user.name });
       if (quickFilterType) tasks = tasks.filter(t => t.issueType === quickFilterType);
       if (!tasks.length) { taskGrid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>No in-progress ${quickFilterType || ''} tasks</h3><p>Click + to add a task.</p></div>`; return; }
       taskGrid.innerHTML = tasks.map(renderTaskCard).join('');

@@ -257,6 +257,10 @@ const DataStore = {
       q = q.eq('ho_or_co', filters.hoOrCo);
     }
 
+    if (filters.createdBy) {
+      q = q.eq('created_by', filters.createdBy);
+    }
+
     q = q.order('created_at', { ascending: false });
 
     const { data, error } = await q;
@@ -264,8 +268,24 @@ const DataStore = {
     return (data || []).map(fromDb);
   },
 
-  async getStats() {
+  async getStats(createdBy) {
     // Run all count queries in parallel for efficiency
+    let qTotal = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true });
+    let qInProgress = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', false);
+    let qCompleted = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', true);
+    let qSoftware = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software').eq('completed', false);
+    let qHardware = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware').eq('completed', false);
+    let qBoth = db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both').eq('completed', false);
+
+    if (createdBy) {
+      qTotal = qTotal.eq('created_by', createdBy);
+      qInProgress = qInProgress.eq('created_by', createdBy);
+      qCompleted = qCompleted.eq('created_by', createdBy);
+      qSoftware = qSoftware.eq('created_by', createdBy);
+      qHardware = qHardware.eq('created_by', createdBy);
+      qBoth = qBoth.eq('created_by', createdBy);
+    }
+
     const [
       { count: total },
       { count: inProgress },
@@ -273,14 +293,7 @@ const DataStore = {
       { count: software },
       { count: hardware },
       { count: both },
-    ] = await Promise.all([
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', false),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('completed', true),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Software').eq('completed', false),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Hardware').eq('completed', false),
-      db.from('it_solutions_tasks').select('*', { count: 'exact', head: true }).eq('issue_type', 'Both').eq('completed', false),
-    ]);
+    ] = await Promise.all([qTotal, qInProgress, qCompleted, qSoftware, qHardware, qBoth]);
 
     return {
       total: total || 0,
