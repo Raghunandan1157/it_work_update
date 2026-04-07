@@ -303,6 +303,12 @@
             <div class="form-group"><label class="form-label">Staff Name <span style="color:var(--danger)">*</span></label><select class="form-control" id="fStaffName"><option value="">-- Select Staff --</option></select><span class="form-error" id="errStaffName"></span></div>
             <div class="form-group"><label class="form-label">Employee ID</label><input class="form-control" type="text" id="fStaffId" readonly /><span class="form-error" id="errStaffId"></span></div>
           </div>
+          <div id="customStaffFields" class="hidden">
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Enter Name <span style="color:var(--danger)">*</span></label><input class="form-control" type="text" id="fCustomStaffName" placeholder="Full name" /><span class="form-error" id="errCustomStaffName"></span></div>
+              <div class="form-group"><label class="form-label">Enter Employee ID <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input class="form-control" type="text" id="fCustomStaffId" placeholder="Employee ID" /></div>
+            </div>
+          </div>
         </div>
         <div id="staffSectionBranch" class="hidden">
           <div class="section-title" style="font-size:0.85rem">Staff Details <span style="color:var(--text-muted);font-weight:normal">(Optional)</span></div>
@@ -410,6 +416,16 @@
           <div class="detail-field hidden" id="edEmpIdFieldHoCo">
             <div class="detail-label">Employee ID</div>
             <div class="detail-value" id="edEmpId"></div>
+          </div>
+          <div id="edCustomStaffFields" class="hidden">
+            <div class="detail-field">
+              <div class="detail-label">Enter Name <span style="color:var(--danger)">*</span></div>
+              <input class="form-control form-control-sm" type="text" id="edCustomStaffName" placeholder="Full name" />
+            </div>
+            <div class="detail-field">
+              <div class="detail-label">Enter Employee ID <span style="color:var(--text-muted);font-size:0.75rem">(optional)</span></div>
+              <input class="form-control form-control-sm" type="text" id="edCustomStaffId" placeholder="Employee ID" />
+            </div>
           </div>
           <div id="edStaffSectionBranch" class="hidden">
             <div class="detail-field">

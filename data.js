@@ -54,6 +54,35 @@ function getNmsplEmployeesByLocation(location) {
   return NMSPL_EMPLOYEES.filter(e => e.location === location);
 }
 
+// Custom staff (names not in the main employee tables)
+const CUSTOM_STAFF = [];
+
+async function loadCustomStaff() {
+  const { data } = await db
+    .from('custom_staff')
+    .select('id, company, name, emp_id, location, added_by')
+    .order('name');
+  CUSTOM_STAFF.length = 0;
+  if (data) data.forEach(e => CUSTOM_STAFF.push(e));
+}
+
+function getCustomStaffByLocation(company, location) {
+  return CUSTOM_STAFF.filter(e => e.company === company && e.location === location);
+}
+
+async function addCustomStaff(company, name, empId, location, addedBy) {
+  const row = { company, name, location, added_by: addedBy };
+  if (empId) row.emp_id = empId;
+  const { data, error } = await db
+    .from('custom_staff')
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  CUSTOM_STAFF.push(data);
+  return data;
+}
+
 // Issue history (autocomplete from DB)
 const IssueHistory = {
   async get(userId, category) {

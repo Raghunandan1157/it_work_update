@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!user) return;
 
   // Load branches, employees, and fix stale session — all in parallel
-  const initPromises = [loadBranches(), loadEmployees(), loadNmsplBranches(), loadNmsplEmployees()];
+  const initPromises = [loadBranches(), loadEmployees(), loadNmsplBranches(), loadNmsplEmployees(), loadCustomStaff()];
   if (!user.hoOrCo) initPromises.push(Auth.getUserById(user.id).then(k => {
     user.hoOrCo = k ? k.hoOrCo : 'CO';
     localStorage.setItem('nlpl_auth_user', JSON.stringify(user));
@@ -806,9 +806,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  const customStaffFields = $('customStaffFields'), fCustomStaffName = $('fCustomStaffName'), fCustomStaffId = $('fCustomStaffId');
+
   function populateStaffDropdown(location) {
     const employees = getActiveEmployeesByLocation(location);
-    fStaffName.innerHTML = '<option value="">-- Select Staff --</option>';
+    const company = selectedCompany || 'NLPL';
+    const custom = getCustomStaffByLocation(company, location);
+    fStaffName.innerHTML = '<option value="">-- Select Staff --</option><option value="__other__">➕ Other (Not in list)</option>';
     employees.forEach(e => {
       const o = document.createElement('option');
       o.value = e.name;
@@ -816,12 +820,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       o.dataset.empId = e.emp_id;
       fStaffName.appendChild(o);
     });
+    custom.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.name;
+      o.textContent = e.emp_id ? `${e.name} (${e.emp_id})` : e.name;
+      o.dataset.empId = e.emp_id || '';
+      o.dataset.custom = 'true';
+      fStaffName.appendChild(o);
+    });
     fStaffId.value = '';
+    customStaffFields.classList.add('hidden');
+    fCustomStaffName.value = ''; fCustomStaffId.value = '';
   }
 
   fStaffName.addEventListener('change', () => {
-    const selected = fStaffName.options[fStaffName.selectedIndex];
-    fStaffId.value = selected && selected.dataset.empId ? selected.dataset.empId : '';
+    if (fStaffName.value === '__other__') {
+      customStaffFields.classList.remove('hidden');
+      fStaffId.value = '';
+      fCustomStaffName.value = ''; fCustomStaffId.value = '';
+    } else {
+      customStaffFields.classList.add('hidden');
+      fCustomStaffName.value = ''; fCustomStaffId.value = '';
+      const selected = fStaffName.options[fStaffName.selectedIndex];
+      fStaffId.value = selected && selected.dataset.empId ? selected.dataset.empId : '';
+    }
   });
 
   // Issue type boxes
@@ -959,19 +981,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     (selectedCompany === 'NMSPL' ? NMSPL_BRANCHES : BRANCHES).forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; edBranch.appendChild(o); });
   }
 
+  const edCustomStaffFields = $('edCustomStaffFields'), edCustomStaffName = $('edCustomStaffName'), edCustomStaffId = $('edCustomStaffId');
+
+  function populateEditStaffDropdown(location) {
+    const emps = getActiveEmployeesByLocation(location);
+    const company = selectedCompany || 'NLPL';
+    const custom = getCustomStaffByLocation(company, location);
+    edStaff.innerHTML = '<option value="">-- Select --</option><option value="__other__">➕ Other (Not in list)</option>';
+    emps.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.name; o.textContent = `${e.name} (${e.emp_id})`; o.dataset.empId = e.emp_id;
+      edStaff.appendChild(o);
+    });
+    custom.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.name; o.textContent = e.emp_id ? `${e.name} (${e.emp_id})` : e.name; o.dataset.empId = e.emp_id || '';
+      edStaff.appendChild(o);
+    });
+  }
+
   edBranch.addEventListener('change', () => {
+    edCustomStaffFields.classList.add('hidden');
+    edCustomStaffName.value = ''; edCustomStaffId.value = '';
     if (edBranch.value && isHoCo(edBranch.value)) {
       $('edStaffSectionHoCo').classList.remove('hidden');
       $('edEmpIdFieldHoCo').classList.remove('hidden');
       $('edStaffSectionBranch').classList.add('hidden');
       $('edBranchStaffName').value = ''; $('edBranchDesignation').value = ''; $('edBranchStaffId').value = '';
-      const emps = getActiveEmployeesByLocation(edBranch.value);
-      edStaff.innerHTML = '<option value="">-- Select --</option>';
-      emps.forEach(e => {
-        const o = document.createElement('option');
-        o.value = e.name; o.textContent = `${e.name} (${e.emp_id})`; o.dataset.empId = e.emp_id;
-        edStaff.appendChild(o);
-      });
+      populateEditStaffDropdown(edBranch.value);
     } else if (edBranch.value) {
       $('edStaffSectionBranch').classList.remove('hidden');
       $('edStaffSectionHoCo').classList.add('hidden');
@@ -989,8 +1026,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   edStaff.addEventListener('change', () => {
-    const sel = edStaff.options[edStaff.selectedIndex];
-    edEmpId.textContent = sel && sel.dataset.empId ? sel.dataset.empId : '';
+    if (edStaff.value === '__other__') {
+      edCustomStaffFields.classList.remove('hidden');
+      edEmpId.textContent = '';
+      edCustomStaffName.value = ''; edCustomStaffId.value = '';
+    } else {
+      edCustomStaffFields.classList.add('hidden');
+      edCustomStaffName.value = ''; edCustomStaffId.value = '';
+      const sel = edStaff.options[edStaff.selectedIndex];
+      edEmpId.textContent = sel && sel.dataset.empId ? sel.dataset.empId : '';
+    }
   });
 
   edIssueCategory.addEventListener('change', () => {
@@ -1081,15 +1126,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.style.overflow = 'hidden';
   }
 
-  function getEditFormData() {
+  async function getEditFormData() {
     const isHoCoEdit = isHoCo(edBranch.value);
     const staffSel = edStaff.options[edStaff.selectedIndex];
+    let staffName, staffId;
+    if (isHoCoEdit) {
+      if (edStaff.value === '__other__') {
+        staffName = edCustomStaffName.value.trim();
+        staffId = edCustomStaffId.value.trim();
+        await addCustomStaff(selectedCompany || 'NLPL', staffName, staffId || null, edBranch.value, user.name);
+      } else {
+        staffName = edStaff.value;
+        staffId = staffSel && staffSel.dataset.empId ? staffSel.dataset.empId : '';
+      }
+    } else {
+      staffName = $('edBranchStaffName').value.trim();
+      staffId = $('edBranchStaffId').value.trim();
+    }
     return {
       timestamp: `${edDate.value} ${edTime.value}`,
       branch: edBranch.value,
       hoOrCo: edHoCo.textContent,
-      staffName: isHoCoEdit ? edStaff.value : $('edBranchStaffName').value.trim(),
-      staffId: isHoCoEdit ? (staffSel && staffSel.dataset.empId ? staffSel.dataset.empId : '') : $('edBranchStaffId').value.trim(),
+      staffName,
+      staffId,
       staffDesignation: isHoCoEdit ? '' : $('edBranchDesignation').value.trim(),
       issueType: edIssueType.value,
       issueCategory: edIssueCategory.value,
@@ -1104,6 +1163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('editError').textContent = '';
     if (!edBranch.value) { $('editError').textContent = 'Select a branch.'; return false; }
     if (isHoCo(edBranch.value) && !edStaff.value) { $('editError').textContent = 'Select a staff member for HO/CO.'; return false; }
+    if (isHoCo(edBranch.value) && edStaff.value === '__other__' && !edCustomStaffName.value.trim()) { $('editError').textContent = 'Enter the staff name.'; return false; }
     if (!edIssueCategory.value) { $('editError').textContent = 'Select an issue category.'; return false; }
     if (edIssueCategory.value === 'Other' && !edIssueDesc.value.trim()) { $('editError').textContent = 'Describe the issue.'; return false; }
     if (!edSolution.value.trim()) { $('editError').textContent = 'Solution is required.'; return false; }
@@ -1114,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (saving || !validateEditForm()) return;
     saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
     try {
-      const editData = getEditFormData();
+      const editData = await getEditFormData();
       await DataStore.update(editingId, editData);
       if (editData.issueDescription) { await IssueHistory.save(user.id, editData.issueDescription, editData.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, editData.issueCategory); }
       showToast('Updated.', 'success');
@@ -1129,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (saving) return;
       saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
       try {
-        const updates = getEditFormData();
+        const updates = await getEditFormData();
         updates.completed = true;
         updates.completedAt = formatDateTime(new Date());
         await DataStore.update(editingId, updates);
@@ -1152,7 +1212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function validateStep(step) {
     clearAllErrors();
-    if (step === 1) { let ok = true; if (!fBranch.value) { setErr('errBranch', 'Select a branch.'); ok = false; } if (isHoCo(fBranch.value) && !fStaffName.value) { setErr('errStaffName', 'Select a staff member.'); ok = false; } return ok; }
+    if (step === 1) { let ok = true; if (!fBranch.value) { setErr('errBranch', 'Select a branch.'); ok = false; } if (isHoCo(fBranch.value)) { if (!fStaffName.value) { setErr('errStaffName', 'Select a staff member.'); ok = false; } else if (fStaffName.value === '__other__' && !fCustomStaffName.value.trim()) { setErr('errCustomStaffName', 'Enter the staff name.'); ok = false; } } return ok; }
     if (step === 2) { if (!fIssueType.value) { setErr('errIssueType', 'Select at least one.'); return false; } return true; }
     if (step === 3) { if (!fIssueCategory.value) { setErr('errIssueDesc', 'Select an issue category.'); return false; } if (fIssueCategory.value === 'Other' && !fIssueDesc.value.trim()) { setErr('errIssueDesc', 'Describe the issue.'); return false; } return true; }
     if (step === 4) { if (!fSolution.value.trim()) { setErr('errSolution', 'Required.'); return false; } if (countWords(fSolution.value) > 50) { setErr('errSolution', 'Max 50 words.'); return false; } return true; }
@@ -1168,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="detail-field"><div class="detail-label">Date & Time</div><div class="detail-value">${esc(fDate.value)} ${esc(fTime.value)}</div></div>
       <div class="detail-field"><div class="detail-label">Branch</div><div class="detail-value">${esc(fBranch.value)}</div></div>
       <div class="detail-field"><div class="detail-label">HO / CO</div><div class="detail-value">${esc(fHoCo.value)}</div></div>
-      ${(() => { const hoCoR = isHoCo(fBranch.value); const sn = hoCoR ? fStaffName.value : fBranchStaffName.value; const si = hoCoR ? fStaffId.value : fBranchStaffId.value; const sd = hoCoR ? '' : fBranchDesignation.value; if (!sn) return ''; let staffTxt = esc(sn); if (sd) staffTxt += ' — ' + esc(sd); if (si) staffTxt += ' (' + esc(si) + ')'; return `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${staffTxt}</div></div>`; })()}
+      ${(() => { const hoCoR = isHoCo(fBranch.value); let sn, si, sd; if (hoCoR) { sn = fStaffName.value === '__other__' ? fCustomStaffName.value : fStaffName.value; si = fStaffName.value === '__other__' ? fCustomStaffId.value : fStaffId.value; sd = ''; } else { sn = fBranchStaffName.value; si = fBranchStaffId.value; sd = fBranchDesignation.value; } if (!sn) return ''; let staffTxt = esc(sn); if (sd) staffTxt += ' — ' + esc(sd); if (si) staffTxt += ' (' + esc(si) + ')'; return `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${staffTxt}</div></div>`; })()}
       <div class="detail-field"><div class="detail-label">Issue Type</div><div class="detail-value">${esc(fIssueType.value)}</div></div>
       <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">₹${amt.toLocaleString('en-IN')}</div></div>
     </div><div style="margin-top:10px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:3px">${esc(fIssueCategory.value === 'Other' ? fIssueDesc.value : (fIssueDesc.value.trim() ? fIssueCategory.value + ' — ' + fIssueDesc.value : fIssueCategory.value))}</div></div>
@@ -1178,7 +1238,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function buildTaskFromForm() {
     const taskId = state.editingTaskId || await generateTaskId();
     const hoCoForm = isHoCo(fBranch.value);
-    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName: hoCoForm ? fStaffName.value.trim() : fBranchStaffName.value.trim(), staffId: hoCoForm ? fStaffId.value.trim() : fBranchStaffId.value.trim(), staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
+    let staffName, staffId;
+    if (hoCoForm) {
+      if (fStaffName.value === '__other__') {
+        staffName = fCustomStaffName.value.trim();
+        staffId = fCustomStaffId.value.trim();
+        // Save to custom_staff table for future use
+        await addCustomStaff(selectedCompany || 'NLPL', staffName, staffId || null, fBranch.value, user.name);
+      } else {
+        staffName = fStaffName.value.trim();
+        staffId = fStaffId.value.trim();
+      }
+    } else {
+      staffName = fBranchStaffName.value.trim();
+      staffId = fBranchStaffId.value.trim();
+    }
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName, staffId, staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
   }
   var saving = false;
   async function handleSave() {
@@ -1208,14 +1283,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function resetForm() {
     [fDate, fTime, fBranch, fStaffName, fStaffId, fBranchStaffName, fBranchDesignation, fBranchStaffId, fIssueType, fIssueCategory, fIssueDesc, fSolution, fDetailedDesc].forEach(el => { if (el) el.value = ''; });
-    fHoCo.value = user.hoOrCo || 'CO'; fAmount.value = 0; staffSectionHoCo.classList.add('hidden'); staffSectionBranch.classList.add('hidden'); issueOtherWrap.classList.add('hidden');
+    fHoCo.value = user.hoOrCo || 'CO'; fAmount.value = 0; staffSectionHoCo.classList.add('hidden'); staffSectionBranch.classList.add('hidden'); issueOtherWrap.classList.add('hidden'); customStaffFields.classList.add('hidden'); fCustomStaffName.value = ''; fCustomStaffId.value = '';
     boxSoftware.classList.remove('selected'); boxHardware.classList.remove('selected');
     state.selectedIssueTypes = []; clearAllErrors();
     if (solutionWordCount) solutionWordCount.textContent = '0'; if (descWordCount) descWordCount.textContent = '0';
     reviewSummary.innerHTML = '';
   }
   function setFormReadonly(ro) {
-    [fDate, fTime, fBranch, fHoCo, fStaffName, fStaffId, fBranchStaffName, fBranchDesignation, fBranchStaffId, fIssueDesc, fSolution, fDetailedDesc, fAmount].forEach(el => { if (el) el.disabled = ro; });
+    [fDate, fTime, fBranch, fHoCo, fStaffName, fStaffId, fBranchStaffName, fBranchDesignation, fBranchStaffId, fCustomStaffName, fCustomStaffId, fIssueDesc, fSolution, fDetailedDesc, fAmount].forEach(el => { if (el) el.disabled = ro; });
     boxSoftware.style.pointerEvents = ro ? 'none' : ''; boxHardware.style.pointerEvents = ro ? 'none' : '';
   }
   // populateBranchDropdown is defined at the top-level scope (handles NLPL/NMSPL switching)
