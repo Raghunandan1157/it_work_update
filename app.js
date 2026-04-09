@@ -523,9 +523,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div class="approval-amounts">
             <div class="approval-amt-box"><div class="approval-amt-label">Expected</div><div class="approval-amt-value">₹${expected.toLocaleString('en-IN')}</div></div>
-            <div class="approval-amt-arrow">→</div>
-            <div class="approval-amt-box"><div class="approval-amt-label">Actual</div><div class="approval-amt-value" style="font-weight:700">₹${actual.toLocaleString('en-IN')}</div></div>
-            <div class="approval-amt-diff ${diffClass}">${diffText}</div>
+            ${isReApproval ? `<div class="approval-amt-arrow">→</div>
+            <div class="approval-amt-box"><div class="approval-amt-label">Actual</div><div class="approval-amt-value amt-over-text">₹${actual.toLocaleString('en-IN')}</div></div>
+            <div class="approval-amt-diff amt-over">${diffText}</div>` : ''}
           </div>
           ${actions}
         </div>`;

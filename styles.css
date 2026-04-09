@@ -1847,6 +1847,7 @@ select.form-control[size] {
   font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; white-space: nowrap;
 }
 .amt-over { background: #fef2f2; color: #dc2626; }
+.amt-over-text { color: #dc2626; font-weight: 700; }
 .amt-under { background: #f0fdf4; color: #16a34a; }
 .amt-equal { background: #f0f9ff; color: #64748b; }
 
