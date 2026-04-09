@@ -1576,14 +1576,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       // If task was rejected, resubmit for approval
       const currentTask = await DataStore.getById(editingId);
       if (currentTask && currentTask.amountStatus === 'rejected') {
-        editData.amountStatus = 'pending';
+        editData.amountStatus = (editData.expectedAmount || editData.amount || 0) === 0 ? 'approved' : 'pending';
         editData.amountRejectionNote = null;
         editData.amountReviewedBy = null;
         editData.amountReviewedAt = null;
       }
       await DataStore.update(editingId, editData);
       if (editData.issueDescription) { await IssueHistory.save(user.id, editData.issueDescription, editData.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, editData.issueCategory); }
-      const msg = editData.amountStatus === 'pending' ? 'Resubmitted for approval.' : 'Updated.';
+      const msg = editData.amountStatus === 'pending' ? 'Resubmitted for approval.' : editData.amountStatus === 'approved' ? 'Auto-approved (₹0).' : 'Updated.';
       showToast(msg, 'success');
       closeEdit(); await renderAll();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -1664,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       staffId = fBranchStaffId.value.trim();
     }
     const expectedAmt = parseFloat(fAmount.value) || 0;
-    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName, staffId, staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: expectedAmt, expectedAmount: expectedAmt, actualAmount: null, amountStatus: 'pending', completed: false, completedAt: null, createdBy: user.name };
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName, staffId, staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: expectedAmt, expectedAmount: expectedAmt, actualAmount: null, amountStatus: expectedAmt === 0 ? 'approved' : 'pending', completed: false, completedAt: null, createdBy: user.name };
   }
   function showActualAmountDialog(expectedAmount, onConfirm) {
     const o = document.createElement('div'); o.className = 'confirm-overlay';
@@ -1721,8 +1721,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     saving = true; btnSave.disabled = true; btnComplete.disabled = true;
     try {
       const d = await buildTaskFromForm(); if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
-      if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated & sent for approval.', 'success'); }
-      else { await DataStore.add(d); showToast('Task created & sent for approval.', 'success'); }
+      const approvalMsg = d.amountStatus === 'approved' ? 'Auto-approved (₹0).' : 'Sent for approval.';
+      if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated. ' + approvalMsg, 'success'); }
+      else { await DataStore.add(d); showToast('Task created. ' + approvalMsg, 'success'); }
       closeModal(); await renderAll();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
     saving = false; btnSave.disabled = false; btnComplete.disabled = false;
@@ -1902,7 +1903,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const amtField = expAmt > 0 ? `<div class="task-field"><span class="task-field-label">Expected Amount</span><span class="task-field-value">₹${expAmt.toLocaleString('en-IN')}</span></div>` : '';
     const rejNote = isRejected && task.amountRejectionNote ? `<div class="task-field"><span class="task-field-label" style="color:var(--danger)">Rejection Note</span><span class="task-field-value" style="color:var(--danger)">${esc(task.amountRejectionNote)}</span></div>` : '';
     const completeBtn = isApproved ? `<button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Complete</button>` : '';
-    return `<div class="task-card"><div class="task-status-bar${isPending ? ' pending' : isRejected ? ' rejected' : isApproved ? ' approved' : ''}"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span>${statusBadge}</div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div>${amtField}${rejNote}</div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button>${completeBtn}</div></div>`;
+    const editLabel = isRejected ? '🔄 Edit & Resubmit' : '✏️ Edit';
+    return `<div class="task-card"><div class="task-status-bar${isPending ? ' pending' : isRejected ? ' rejected' : isApproved ? ' approved' : ''}"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span>${statusBadge}</div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div>${amtField}${rejNote}</div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn ${isRejected ? 'btn-primary' : 'btn-secondary'} btn-sm" data-edit="${task.taskId}">${editLabel}</button>${completeBtn}</div></div>`;
   }
 
   async function handleQuickComplete(taskId) {
