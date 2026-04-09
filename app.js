@@ -541,7 +541,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('approvalsGrid').querySelectorAll('[data-approve]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const taskId = btn.dataset.approve;
-          await DataStore.update(taskId, { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) });
+          const task = await DataStore.getById(taskId);
+          const updates = { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) };
+          // If re-approval (actual > expected), sync amounts to the approved actual
+          if (task && task.actualAmount != null && task.actualAmount > (task.expectedAmount || 0)) {
+            updates.expectedAmount = task.actualAmount;
+            updates.amount = task.actualAmount;
+          }
+          await DataStore.update(taskId, updates);
           showToast('Approved!', 'success');
           await renderApprovals();
         });
@@ -563,7 +570,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const allTasks = await DataStore.getAll();
         const pending = allTasks.filter(t => t.amountStatus === 'pending');
         for (const t of pending) {
-          await DataStore.update(t.taskId, { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) });
+          const updates = { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) };
+          if (t.actualAmount != null && t.actualAmount > (t.expectedAmount || 0)) {
+            updates.expectedAmount = t.actualAmount;
+            updates.amount = t.actualAmount;
+          }
+          await DataStore.update(t.taskId, updates);
         }
         showToast(`${pending.length} task(s) approved!`, 'success');
         await renderApprovals();
