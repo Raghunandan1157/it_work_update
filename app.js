@@ -44,6 +44,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   sidebarBackdrop.addEventListener('click', () => { sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show'); });
   logoutBtn.addEventListener('click', () => { if (confirm('Log out?')) Auth.logout(); });
 
+  // ─── SETTINGS (Change Password) ──────────────────────────────────────────
+  const settingsOverlay = $('settingsOverlay');
+  $('settingsBtn').addEventListener('click', () => {
+    $('pwdCurrent').value = ''; $('pwdNew').value = ''; $('pwdConfirm').value = '';
+    $('pwdError').textContent = ''; $('pwdSuccess').textContent = ''; $('pwdSuccess').classList.add('hidden');
+    settingsOverlay.classList.add('open'); document.body.style.overflow = 'hidden';
+  });
+  function closeSettings() { settingsOverlay.classList.remove('open'); document.body.style.overflow = ''; }
+  $('settingsClose').addEventListener('click', closeSettings);
+  $('pwdCancelBtn').addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) closeSettings(); });
+
+  $('pwdSaveBtn').addEventListener('click', async () => {
+    const current = $('pwdCurrent').value;
+    const newPwd = $('pwdNew').value;
+    const confirm = $('pwdConfirm').value;
+    $('pwdError').textContent = ''; $('pwdSuccess').textContent = ''; $('pwdSuccess').classList.add('hidden');
+
+    if (!current) { $('pwdError').textContent = 'Enter your current password.'; return; }
+    if (!newPwd) { $('pwdError').textContent = 'Enter a new password.'; return; }
+    if (newPwd.length < 4) { $('pwdError').textContent = 'New password must be at least 4 characters.'; return; }
+    if (newPwd !== confirm) { $('pwdError').textContent = 'New passwords do not match.'; return; }
+    if (current === newPwd) { $('pwdError').textContent = 'New password must be different from current.'; return; }
+
+    $('pwdSaveBtn').disabled = true;
+    try {
+      // Verify current password
+      const { data, error } = await db
+        .from('it_solutions_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .eq('password', current)
+        .maybeSingle();
+
+      if (error || !data) {
+        $('pwdError').textContent = 'Current password is incorrect.';
+        $('pwdSaveBtn').disabled = false;
+        return;
+      }
+
+      // Update password
+      const { error: updateErr } = await db
+        .from('it_solutions_users')
+        .update({ password: newPwd })
+        .eq('user_id', user.id);
+
+      if (updateErr) throw updateErr;
+
+      $('pwdSuccess').textContent = 'Password updated successfully!';
+      $('pwdSuccess').classList.remove('hidden');
+      $('pwdCurrent').value = ''; $('pwdNew').value = ''; $('pwdConfirm').value = '';
+    } catch (err) { $('pwdError').textContent = 'Error: ' + err.message; }
+    $('pwdSaveBtn').disabled = false;
+  });
+
   // ─── COMPANY SELECTOR ─────────────────────────────────────────────────────
   document.querySelectorAll('.company-btn').forEach(btn => {
     btn.addEventListener('click', () => {

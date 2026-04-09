@@ -86,10 +86,16 @@
           <div class="user-hoco" id="userHoCo" style="font-size:0.68rem;color:#94a3b8;margin-top:1px"></div>
         </div>
       </div>
-      <button class="btn-logout" id="logoutBtn">
-        <span>🚪</span>
-        <span class="nav-label">Logout</span>
-      </button>
+      <div class="sidebar-actions">
+        <button class="btn-settings" id="settingsBtn" title="Settings">
+          <span>⚙️</span>
+          <span class="nav-label">Settings</span>
+        </button>
+        <button class="btn-logout" id="logoutBtn">
+          <span>🚪</span>
+          <span class="nav-label">Logout</span>
+        </button>
+      </div>
     </div>
   </aside>
 
@@ -506,6 +512,36 @@
       <button class="btn btn-secondary" id="editCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="editSaveBtn">💾 Save</button>
       <button class="btn btn-success" id="editCompleteBtn">✅ Complete</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span>⚙️ Change Password</span>
+      <button class="modal-close" id="settingsClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Current Password <span style="color:var(--danger)">*</span></label>
+        <input class="form-control" type="password" id="pwdCurrent" placeholder="Enter current password" autocomplete="current-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password <span style="color:var(--danger)">*</span></label>
+        <input class="form-control" type="password" id="pwdNew" placeholder="Enter new password" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password <span style="color:var(--danger)">*</span></label>
+        <input class="form-control" type="password" id="pwdConfirm" placeholder="Re-enter new password" autocomplete="new-password" />
+      </div>
+      <span class="form-error" id="pwdError"></span>
+      <span class="form-success hidden" id="pwdSuccess" style="color:var(--success);font-size:0.85rem;display:block;margin-top:8px"></span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="pwdCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="pwdSaveBtn">🔒 Update Password</button>
     </div>
   </div>
 </div>

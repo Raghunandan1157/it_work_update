@@ -1724,6 +1724,16 @@ select.form-control[size] {
 .task-status-bar.rejected { background: #dc2626; }
 .task-status-bar.approved { background: #16a34a; }
 
+/* Settings button */
+.sidebar-actions { display: flex; gap: 6px; }
+.btn-settings {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 8px; border: none;
+  background: transparent; color: var(--text-muted);
+  font-size: 0.82rem; cursor: pointer; transition: all .2s;
+}
+.btn-settings:hover { background: var(--surface); color: var(--text); }
+
 /* Ancillary button */
 .ancillary-btn {
   margin-top: 12px; padding: 8px 20px; border-radius: 8px;
