@@ -1852,7 +1852,14 @@ select.form-control[size] {
 .amt-equal { background: #f0f9ff; color: #64748b; }
 
 /* Re-approval highlight */
-.approval-card.re-approval { border-color: #fbbf24; border-width: 2px; }
+.approval-card.re-approval {
+  border-color: #fbbf24; border-width: 2px;
+  animation: card-glow 2s ease-in-out infinite;
+}
+@keyframes card-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(251,191,36,0.2); }
+  50% { box-shadow: 0 0 20px rgba(251,191,36,0.5), 0 0 40px rgba(251,191,36,0.15); }
+}
 .re-approval-banner {
   background: linear-gradient(90deg, #fef3c7, #fde68a, #fef3c7);
   background-size: 200% 100%;
