@@ -1344,6 +1344,74 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnSave.addEventListener('click', handleSave);
   btnComplete.addEventListener('click', handleComplete);
 
+  // ─── ANCILLARY RESPONSIBILITIES ──────────────────────────────────────────
+  let ancillaryMode = false;
+  const ancillaryBtn = $('btnAncillary');
+  const ancOverlay = $('ancillaryOverlay');
+
+  ancillaryBtn.addEventListener('click', () => {
+    ancillaryMode = !ancillaryMode;
+    ancillaryBtn.classList.toggle('active', ancillaryMode);
+  });
+
+  // Override FAB when ancillary mode is on
+  const origFabClick = fab.onclick;
+  fab.addEventListener('click', (e) => {
+    if (!ancillaryMode) return; // let normal handler run
+    e.stopImmediatePropagation();
+    if (!selectedCompany) {
+      const card = $('companySelector');
+      const err = $('companyError');
+      if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      if (err) err.classList.remove('hidden');
+      setTimeout(() => { if (err) err.classList.add('hidden'); }, 3000);
+      return;
+    }
+    openAncillaryModal();
+  });
+
+  function openAncillaryModal() {
+    const now = new Date();
+    $('ancCompany').value = selectedCompany;
+    $('ancDate').value = now.toISOString().split('T')[0];
+    $('ancTime').value = now.toTimeString().slice(0, 8);
+    $('ancTask').value = '';
+    $('ancError').textContent = '';
+    ancOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAncillaryModal() {
+    ancOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  $('ancillaryClose').addEventListener('click', closeAncillaryModal);
+  $('ancCancelBtn').addEventListener('click', closeAncillaryModal);
+  ancOverlay.addEventListener('click', e => { if (e.target === ancOverlay) closeAncillaryModal(); });
+
+  $('ancSaveBtn').addEventListener('click', async () => {
+    const task = $('ancTask').value.trim();
+    if (!task) { $('ancError').textContent = 'Task description is required.'; return; }
+    $('ancSaveBtn').disabled = true;
+    try {
+      await db.from('ancillary_tasks').insert({
+        company: $('ancCompany').value,
+        timestamp: `${$('ancDate').value} ${$('ancTime').value}`,
+        task_description: task,
+        created_by: user.name
+      });
+      closeAncillaryModal();
+      showToast('Ancillary task saved.', 'success');
+    } catch (err) { $('ancError').textContent = 'Error: ' + err.message; }
+    $('ancSaveBtn').disabled = false;
+  });
+
+  // Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && ancOverlay.classList.contains('open')) closeAncillaryModal();
+  });
+
   function openAddWizard() {
     state.editingTaskId = null; state.selectedIssueTypes = []; resetForm();
     const now = new Date(); fDate.value = now.toISOString().split('T')[0]; fTime.value = now.toTimeString().slice(0, 8);

@@ -128,6 +128,7 @@
             </button>
           </div>
           <div class="company-error hidden" id="companyError">⚠️ Please select a company first!</div>
+          <button class="ancillary-btn" id="btnAncillary">📝 Ancillary Responsibilities</button>
         </div>
         <div class="section-title" id="sectionTitle">⏳ Tasks In Progress</div>
 
@@ -559,6 +560,35 @@
       <button class="btn btn-secondary" id="editCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="editSaveBtn">💾 Save</button>
       <button class="btn btn-success" id="editCompleteBtn">✅ Complete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANCILLARY TASK MODAL -->
+<div class="modal-overlay" id="ancillaryOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span>📝 Ancillary Responsibility</span>
+      <button class="modal-close" id="ancillaryClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <input class="form-control" type="text" id="ancCompany" readonly />
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date</label><input class="form-control" type="date" id="ancDate" /></div>
+        <div class="form-group"><label class="form-label">Time</label><input class="form-control" type="time" id="ancTime" step="1" /></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task <span style="color:var(--danger)">*</span></label>
+        <textarea class="form-control" id="ancTask" rows="4" placeholder="Describe the ancillary task..."></textarea>
+      </div>
+      <span class="form-error" id="ancError"></span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="ancCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="ancSaveBtn">💾 Save</button>
     </div>
   </div>
 </div>

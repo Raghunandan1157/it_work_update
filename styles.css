@@ -1895,6 +1895,18 @@ select.form-control[size] {
 .task-status-bar.rejected { background: #dc2626; }
 .task-status-bar.approved { background: #16a34a; }
 
+/* Ancillary button */
+.ancillary-btn {
+  margin-top: 12px; padding: 8px 20px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text); font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: all .2s; display: inline-block;
+}
+.ancillary-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ancillary-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+
 /* Amount change display on task cards */
 .task-amount-change {
   background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px;
