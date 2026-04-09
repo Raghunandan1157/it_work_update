@@ -111,10 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('adminOverview').classList.toggle('hidden', adminTab !== 'overview');
       $('adminApprovals').classList.toggle('hidden', adminTab !== 'approvals');
       $('adminReports').classList.toggle('hidden', adminTab !== 'reports');
-      $('adminDuration').classList.toggle('hidden', adminTab !== 'duration');
       if (adminTab === 'approvals') await renderApprovals();
       if (adminTab === 'reports') await renderReport();
-      if (adminTab === 'duration') await renderDuration();
       sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show');
     });
 
@@ -149,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             $('adminOverview').classList.add('hidden');
             $('adminApprovals').classList.remove('hidden');
             $('adminReports').classList.add('hidden');
-            $('adminDuration').classList.add('hidden');
+  
             await renderApprovals();
             return;
           }
@@ -163,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           $('adminOverview').classList.add('hidden');
           $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
-          $('adminDuration').classList.add('hidden');
+
           $('staffSelector').innerHTML = '';
           await renderStaffSelector();
           await renderReport();
@@ -214,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           $('adminOverview').classList.add('hidden');
           $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
-          $('adminDuration').classList.add('hidden');
+
           $('staffSelector').innerHTML = '';
           await renderStaffSelector();
           await renderReport();
@@ -239,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           $('adminOverview').classList.add('hidden');
           $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
-          $('adminDuration').classList.add('hidden');
+
           $('staffSelector').innerHTML = '';
           await renderStaffSelector();
           await renderReport();
@@ -269,7 +267,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('adminOverview').classList.add('hidden');
       $('adminApprovals').classList.remove('hidden');
       $('adminReports').classList.add('hidden');
-      $('adminDuration').classList.add('hidden');
       await renderApprovals();
     });
 
@@ -873,253 +870,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // ─── DURATION ──────────────────────────────────────────────────────────────
-    function calcDurationMs(start, end) {
-      if (!start || !end) return null;
-      const s = new Date(start), e = new Date(end);
-      if (isNaN(s) || isNaN(e)) return null;
-      return e - s;
-    }
-
-    function formatDuration(ms) {
-      if (ms == null || ms < 0) return '—';
-      const mins = Math.floor(ms / 60000);
-      if (mins < 60) return `${mins}m`;
-      const hrs = Math.floor(mins / 60);
-      const remMins = mins % 60;
-      if (hrs < 24) return `${hrs}h ${remMins}m`;
-      const days = Math.floor(hrs / 24);
-      const remHrs = hrs % 24;
-      return `${days}d ${remHrs}h`;
-    }
-
-    // Canvas: draw smooth area chart with orange gradient + glow
-    function drawAreaChart(canvasId, labels, values, unit) {
-      const canvas = $(canvasId);
-      if (!canvas) return;
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.parentElement.getBoundingClientRect();
-      const W = rect.width - 36; // account for panel padding
-      const H = canvas.height;
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width = W + 'px';
-      canvas.style.height = H + 'px';
-      const ctx = canvas.getContext('2d');
-      ctx.scale(dpr, dpr);
-
-      if (!values.length) {
-        ctx.fillStyle = '#475569';
-        ctx.font = '13px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('No data yet', W / 2, H / 2);
-        return;
-      }
-
-      const padL = 40, padR = 16, padT = 20, padB = 30;
-      const cW = W - padL - padR, cH = H - padT - padB;
-      const maxVal = Math.max(...values, 1);
-      const n = values.length;
-
-      // Grid lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padT + (cH / 4) * i;
-        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-      }
-
-      // Y-axis labels
-      ctx.fillStyle = '#475569';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      for (let i = 0; i <= 4; i++) {
-        const v = maxVal - (maxVal / 4) * i;
-        const y = padT + (cH / 4) * i;
-        let label = unit === 'time' ? formatDuration(v) : String(Math.round(v));
-        ctx.fillText(label, padL - 6, y + 4);
-      }
-
-      // Build points
-      const pts = values.map((v, i) => ({
-        x: padL + (n === 1 ? cW / 2 : (i / (n - 1)) * cW),
-        y: padT + cH - (v / maxVal) * cH
-      }));
-
-      // Smooth curve helper (catmull-rom → bezier)
-      function smoothPath(ctx, pts) {
-        if (pts.length < 2) return;
-        ctx.moveTo(pts[0].x, pts[0].y);
-        if (pts.length === 2) { ctx.lineTo(pts[1].x, pts[1].y); return; }
-        for (let i = 0; i < pts.length - 1; i++) {
-          const p0 = pts[i === 0 ? 0 : i - 1];
-          const p1 = pts[i], p2 = pts[i + 1];
-          const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
-          const cp1x = p1.x + (p2.x - p0.x) / 6;
-          const cp1y = p1.y + (p2.y - p0.y) / 6;
-          const cp2x = p2.x - (p3.x - p1.x) / 6;
-          const cp2y = p2.y - (p3.y - p1.y) / 6;
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-        }
-      }
-
-      // Area fill with gradient
-      const grad = ctx.createLinearGradient(0, padT, 0, padT + cH);
-      grad.addColorStop(0, 'rgba(245,158,11,0.45)');
-      grad.addColorStop(0.5, 'rgba(217,119,6,0.15)');
-      grad.addColorStop(1, 'rgba(217,119,6,0)');
-
-      ctx.beginPath();
-      smoothPath(ctx, pts);
-      ctx.lineTo(pts[pts.length - 1].x, padT + cH);
-      ctx.lineTo(pts[0].x, padT + cH);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      // Glow line
-      ctx.save();
-      ctx.shadowColor = 'rgba(245,158,11,0.6)';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      smoothPath(ctx, pts);
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-      ctx.restore();
-
-      // Dots + value labels
-      pts.forEach((p, i) => {
-        // Dot glow
-        ctx.save();
-        ctx.shadowColor = 'rgba(251,191,36,0.7)';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fill();
-        ctx.restore();
-
-        // Vertical dashed line
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(245,158,11,0.2)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y + 6); ctx.lineTo(p.x, padT + cH); ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Value label
-        let valTxt = unit === 'time' ? formatDuration(values[i]) : String(values[i]);
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = 'bold 9px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(valTxt, p.x, p.y - 10);
-      });
-
-      // X-axis labels
-      ctx.fillStyle = '#64748b';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      pts.forEach((p, i) => {
-        let lbl = labels[i] || '';
-        if (lbl.length > 8) lbl = lbl.slice(0, 7) + '…';
-        ctx.fillText(lbl, p.x, padT + cH + 18);
-      });
-    }
-
-    async function renderDuration() {
-      const allTasks = await DataStore.getAll();
-      const completed = allTasks.filter(t => t.completed && t.timestamp && t.completedAt);
-
-      // Group by staff
-      const staffMap = {};
-      completed.forEach(t => {
-        const name = t.createdBy || 'Unknown';
-        const dur = calcDurationMs(t.timestamp, t.completedAt);
-        if (dur == null || dur < 0) return;
-        if (!staffMap[name]) staffMap[name] = [];
-        staffMap[name].push(dur);
-      });
-
-      const staffStats = Object.entries(staffMap).map(([name, durations]) => {
-        const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-        const min = Math.min(...durations);
-        const max = Math.max(...durations);
-        return { name, count: durations.length, avg, min, max };
-      }).sort((a, b) => a.avg - b.avg);
-
-      // Summary
-      const totalCompleted = completed.length;
-      const allDurations = completed.map(t => calcDurationMs(t.timestamp, t.completedAt)).filter(d => d != null && d >= 0);
-      const globalAvg = allDurations.length ? allDurations.reduce((a, b) => a + b, 0) / allDurations.length : 0;
-      const fastest = allDurations.length ? Math.min(...allDurations) : 0;
-      const slowest = allDurations.length ? Math.max(...allDurations) : 0;
-
-      $('durationSummary').innerHTML = `
-        <div class="dur-stat-card"><div class="dur-stat-num" style="color:#f59e0b">${totalCompleted}</div><div class="dur-stat-label">Completed</div></div>
-        <div class="dur-stat-card"><div class="dur-stat-num" style="color:#fbbf24">${formatDuration(globalAvg)}</div><div class="dur-stat-label">Avg Duration</div></div>
-        <div class="dur-stat-card"><div class="dur-stat-num" style="color:#34d399">${formatDuration(fastest)}</div><div class="dur-stat-label">Fastest</div></div>
-        <div class="dur-stat-card"><div class="dur-stat-num" style="color:#f87171">${formatDuration(slowest)}</div><div class="dur-stat-label">Slowest</div></div>
-      `;
-
-      // Area chart: completions per day
-      const dayMap = {};
-      completed.forEach(t => {
-        const day = extractDate(t.completedAt) || extractDate(t.timestamp) || null;
-        if (!day) return;
-        dayMap[day] = (dayMap[day] || 0) + 1;
-      });
-      const dayLabels = Object.keys(dayMap).sort();
-      const dayValues = dayLabels.map(d => dayMap[d]);
-      // Show short date labels
-      const shortDayLabels = dayLabels.map(d => { const p = d.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}` : d; });
-      drawAreaChart('durAreaChart', shortDayLabels, dayValues, 'count');
-
-      // Staff avg duration chart
-      const staffLabels = staffStats.map(s => s.name.split(' ')[0]);
-      const staffAvgs = staffStats.map(s => s.avg);
-      drawAreaChart('durStaffChart', staffLabels, staffAvgs, 'time');
-
-      // Glowing bars
-      const maxAvg = staffStats.length ? Math.max(...staffStats.map(s => s.avg)) : 1;
-      if (!staffStats.length) {
-        $('durationBars').innerHTML = '<div style="text-align:center;padding:30px;color:#475569">No data yet</div>';
-      } else {
-        $('durationBars').innerHTML = staffStats.map((s, i) => {
-          const pct = Math.max((s.avg / maxAvg) * 100, 5);
-          return `<div class="dur-glow-row">
-            <div class="dur-glow-rank">${i + 1}</div>
-            <div class="dur-glow-name">${esc(s.name)}</div>
-            <div class="dur-glow-track"><div class="dur-glow-fill" style="width:0%"></div></div>
-            <div class="dur-glow-val">${formatDuration(s.avg)}</div>
-          </div>`;
-        }).join('');
-        // Animate bars
-        requestAnimationFrame(() => {
-          $('durationBars').querySelectorAll('.dur-glow-fill').forEach((bar, i) => {
-            const pct = Math.max((staffStats[i].avg / maxAvg) * 100, 5);
-            setTimeout(() => { bar.style.width = pct + '%'; }, i * 80);
-          });
-        });
-      }
-
-      // Table
-      if (!staffStats.length) {
-        $('durationTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#475569">No data</td></tr>';
-      } else {
-        $('durationTableBody').innerHTML = staffStats.map((s, i) => `<tr>
-          <td><span class="dur-dot" style="background:#f59e0b"></span>${esc(s.name)}</td>
-          <td>${s.count}</td>
-          <td style="color:#fbbf24"><strong>${formatDuration(s.avg)}</strong></td>
-          <td style="color:#34d399">${formatDuration(s.min)}</td>
-          <td style="color:#f87171">${formatDuration(s.max)}</td>
-        </tr>`).join('');
-      }
-    }
-
     await Promise.all([renderAdminOverview(), renderFinancialOverview(), renderStaffSelector().then(() => renderReport())]);
 
     // Refresh periodically
-    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'overview') await renderFinancialOverview(); if (adminTab === 'approvals') await renderApprovals(); if (adminTab === 'reports') await renderReport(); if (adminTab === 'duration') await renderDuration(); }, 5000);
+    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'overview') await renderFinancialOverview(); if (adminTab === 'approvals') await renderApprovals(); if (adminTab === 'reports') await renderReport(); }, 5000);
 
     // Shared view modal for admin
     function openViewSummary(taskId) { sharedOpenViewSummary(taskId); }

@@ -72,10 +72,6 @@
         <span class="nav-label">Approvals</span>
         <span class="nav-badge" id="navBadgePendingApprovals" style="background:#f59e0b">0</span>
       </div>
-      <div class="nav-item" data-admin-tab="duration" role="button" tabindex="0">
-        <span class="nav-icon">⏱️</span>
-        <span class="nav-label">Duration</span>
-      </div>
       <div class="divider" style="margin:12px 0"></div>
       <div class="nav-section-label">Summary</div>
       <div class="admin-sidebar-stats" id="adminSidebarStats"></div>
@@ -262,56 +258,6 @@
               </thead>
               <tbody id="reportTableBody"></tbody>
             </table>
-          </div>
-        </div>
-
-        <!-- ADMIN: DURATION -->
-        <div id="adminDuration" class="hidden dur-dark">
-          <div class="dur-header">
-            <h2 class="dur-title">⏱️ Duration Analytics</h2>
-            <p class="dur-subtitle">Task completion time across your team</p>
-          </div>
-
-          <!-- Stat cards -->
-          <div class="dur-stats" id="durationSummary"></div>
-
-          <!-- Area chart -->
-          <div class="dur-panel">
-            <div class="dur-panel-head">
-              <span class="dur-panel-title">Completion Timeline</span>
-              <span class="dur-panel-hint">Tasks completed per day</span>
-            </div>
-            <canvas id="durAreaChart" height="220"></canvas>
-          </div>
-
-          <!-- Staff avg chart -->
-          <div class="dur-panel">
-            <div class="dur-panel-head">
-              <span class="dur-panel-title">Average Duration per Staff</span>
-            </div>
-            <canvas id="durStaffChart" height="220"></canvas>
-          </div>
-
-          <!-- Glowing bars -->
-          <div class="dur-panel">
-            <div class="dur-panel-head">
-              <span class="dur-panel-title">Staff Leaderboard</span>
-              <span class="dur-panel-hint">Fastest to slowest avg</span>
-            </div>
-            <div class="dur-bars" id="durationBars"></div>
-          </div>
-
-          <!-- Detail table -->
-          <div class="dur-panel">
-            <div class="dur-panel-head">
-              <span class="dur-panel-title">Breakdown</span>
-            </div>
-            <div class="dur-table-scroll">
-              <table class="dur-table">
-                <thead><tr><th>Staff</th><th>Done</th><th>Avg</th><th>Fast</th><th>Slow</th></tr></thead>
-                <tbody id="durationTableBody"></tbody>
-              </table>
-            </div>
           </div>
         </div>
 
