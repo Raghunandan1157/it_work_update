@@ -484,7 +484,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderApprovals() {
       const allTasks = await DataStore.getAll();
-      const tasks = allTasks.filter(t => t.amountStatus === approvalFilter);
+      let tasks = allTasks.filter(t => t.amountStatus === approvalFilter);
+      // Auto-approve any ₹0 tasks that slipped through, and hide them
+      const zeroTasks = tasks.filter(t => t.amountStatus === 'pending' && (t.expectedAmount || t.amount || 0) === 0 && (t.actualAmount == null || t.actualAmount === 0));
+      for (const zt of zeroTasks) {
+        await DataStore.update(zt.taskId, { amountStatus: 'approved' });
+      }
+      if (zeroTasks.length) tasks = tasks.filter(t => !zeroTasks.some(z => z.taskId === t.taskId));
       const pendingCount = allTasks.filter(t => t.amountStatus === 'pending').length;
       updateApprovalBadge(pendingCount);
 
