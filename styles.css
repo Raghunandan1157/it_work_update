@@ -1854,8 +1854,17 @@ select.form-control[size] {
 /* Re-approval highlight */
 .approval-card.re-approval { border-color: #fbbf24; border-width: 2px; }
 .re-approval-banner {
-  background: #fef3c7; color: #92400e; font-size: 0.8rem; font-weight: 600;
-  padding: 6px 12px; border-radius: 6px; margin-bottom: 12px; text-align: center;
+  background: linear-gradient(90deg, #fef3c7, #fde68a, #fef3c7);
+  background-size: 200% 100%;
+  animation: re-approval-wave 2s ease-in-out infinite;
+  color: #92400e; font-size: 0.8rem; font-weight: 700;
+  padding: 8px 14px; border-radius: 6px; margin-bottom: 12px; text-align: center;
+  border: 1px solid #fbbf24;
+}
+@keyframes re-approval-wave {
+  0% { background-position: 100% 0; }
+  50% { background-position: 0 0; }
+  100% { background-position: 100% 0; }
 }
 
 /* Approval action buttons */
