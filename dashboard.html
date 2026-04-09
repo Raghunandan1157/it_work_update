@@ -178,7 +178,7 @@
           <div class="admin-user-grid" id="adminUserGrid"></div>
 
           <!-- FINANCIAL OVERVIEW -->
-          <div class="fin-section">
+          <div class="fin-section" id="finSection" style="cursor:pointer">
             <div class="section-title">💰 Financial Overview</div>
             <div class="fin-period-bar">
               <button class="fin-period-btn active" data-fin-period="1">Today</button>
@@ -215,7 +215,10 @@
 
         <!-- ADMIN: APPROVALS -->
         <div id="adminApprovals" class="hidden">
-          <div class="section-title">💰 Amount Approvals</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div class="section-title" style="margin-bottom:0">💰 Amount Approvals</div>
+            <button class="btn btn-success" id="btnApproveAll" style="display:none">✅ Approve All</button>
+          </div>
           <div class="approval-status-bar" id="approvalStatusBar">
             <button class="approval-tab-btn active" data-approval-filter="pending">Pending</button>
             <button class="approval-tab-btn" data-approval-filter="approved">Approved</button>

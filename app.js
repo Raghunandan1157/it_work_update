@@ -256,6 +256,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
+    // Click financial section → go to approvals
+    $('finSection').addEventListener('click', async (e) => {
+      if (e.target.closest('.fin-period-btn')) return; // don't hijack filter clicks
+      document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
+      document.querySelector('[data-admin-tab="approvals"]').classList.add('active');
+      adminTab = 'approvals';
+      $('adminOverview').classList.add('hidden');
+      $('adminApprovals').classList.remove('hidden');
+      $('adminReports').classList.add('hidden');
+      $('adminDuration').classList.add('hidden');
+      await renderApprovals();
+    });
+
     async function renderFinancialOverview() {
       const allTasks = await DataStore.getAll();
 
@@ -531,7 +544,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           showRejectDialog(taskId);
         });
       });
+
+      // Show/hide Approve All button
+      $('btnApproveAll').style.display = (approvalFilter === 'pending' && tasks.length > 0) ? '' : 'none';
     }
+
+    // Approve All handler
+    $('btnApproveAll').addEventListener('click', () => {
+      showConfirm('✅ Approve All', `Approve all pending tasks at once?`, 'Approve All', async () => {
+        const allTasks = await DataStore.getAll();
+        const pending = allTasks.filter(t => t.amountStatus === 'pending');
+        for (const t of pending) {
+          await DataStore.update(t.taskId, { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) });
+        }
+        showToast(`${pending.length} task(s) approved!`, 'success');
+        await renderApprovals();
+      });
+    });
 
     function showRejectDialog(taskId) {
       const o = document.createElement('div'); o.className = 'confirm-overlay';
