@@ -1795,3 +1795,146 @@ select.form-control[size] {
   .toast-container { right: 14px; left: 14px; bottom: 90px; align-items: stretch; }
   .toast { max-width: 100%; }
 }
+
+/* ═══ AMOUNT APPROVAL SYSTEM ═══ */
+
+/* Approval tab bar */
+.approval-status-bar {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.approval-tab-btn {
+  padding: 8px 20px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--text-muted); font-weight: 500;
+  cursor: pointer; transition: all .2s;
+}
+.approval-tab-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.approval-tab-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+/* Approvals grid */
+.approvals-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;
+}
+
+/* Approval card */
+.approval-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px; transition: box-shadow .2s;
+}
+.approval-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+.approval-card-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.approval-date { font-size: 0.8rem; color: var(--text-muted); }
+.approval-card-info {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border);
+}
+.approval-detail { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.approval-detail-label { color: var(--text-muted); font-weight: 500; }
+
+/* Amount comparison */
+.approval-amounts {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding: 12px; background: #f8fafc; border-radius: 10px;
+}
+.approval-amt-box { text-align: center; flex: 1; }
+.approval-amt-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.approval-amt-value { font-size: 1.1rem; font-weight: 600; }
+.approval-amt-arrow { color: var(--text-muted); font-size: 1.2rem; }
+.approval-amt-diff {
+  font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; white-space: nowrap;
+}
+.amt-over { background: #fef2f2; color: #dc2626; }
+.amt-under { background: #f0fdf4; color: #16a34a; }
+.amt-equal { background: #f0f9ff; color: #64748b; }
+
+/* Approval action buttons */
+.approval-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.approval-meta { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+
+/* Amount status badges */
+.badge-amount-pending {
+  background: #fef3c7; color: #92400e; font-size: 0.72rem; padding: 2px 8px; border-radius: 6px;
+}
+.badge-amount-rejected {
+  background: #fef2f2; color: #dc2626; font-size: 0.72rem; padding: 2px 8px; border-radius: 6px;
+}
+
+/* Stat card amber accent */
+.stat-card.accent-amber { border-left: 4px solid #f59e0b; }
+.stat-icon.amber { background: #fffbeb; color: #f59e0b; }
+
+/* Task status bar colors based on approval */
+.task-status-bar.pending { background: #f59e0b; }
+.task-status-bar.rejected { background: #dc2626; }
+.task-status-bar.approved { background: #16a34a; }
+
+/* Nav badge pulse for pending approvals */
+#navBadgePendingApprovals { animation: badge-pulse 2s infinite; }
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+  .approvals-grid { grid-template-columns: 1fr; }
+  .approval-amounts { flex-wrap: wrap; }
+}
+
+/* ═══ FINANCIAL OVERVIEW ═══ */
+.fin-section { margin-top: 32px; }
+
+.fin-period-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+.fin-period-btn {
+  padding: 8px 22px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--text-muted); font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: all .2s;
+}
+.fin-period-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+.fin-period-btn:hover:not(.active) { border-color: #1e293b; color: #1e293b; }
+
+.fin-layout {
+  display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start;
+}
+
+.fin-chart-wrap {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; overflow: hidden;
+}
+.fin-chart-container {
+  position: relative; width: 100%; height: 260px;
+}
+.fin-chart-container canvas {
+  position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important;
+}
+
+.fin-summary-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.fin-summary-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; display: flex; align-items: center; gap: 14px;
+  transition: box-shadow .2s;
+}
+.fin-summary-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+.fin-summary-icon { font-size: 1.6rem; }
+.fin-summary-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+.fin-summary-value { font-size: 1.35rem; font-weight: 700; margin-top: 2px; }
+
+.fin-expected { border-left: 4px solid #3b82f6; }
+.fin-expected .fin-summary-value { color: #3b82f6; }
+.fin-actual { border-left: 4px solid #f59e0b; }
+.fin-actual .fin-summary-value { color: #f59e0b; }
+.fin-paid { border-left: 4px solid #16a34a; }
+.fin-paid .fin-summary-value { color: #16a34a; }
+
+@media (max-width: 900px) {
+  .fin-layout { grid-template-columns: 1fr; }
+  .fin-summary-wrap { flex-direction: row; flex-wrap: wrap; }
+  .fin-summary-card { flex: 1; min-width: 160px; }
+}
+@media (max-width: 500px) {
+  .fin-period-bar { flex-wrap: wrap; }
+  .fin-summary-wrap { flex-direction: column; }
+}

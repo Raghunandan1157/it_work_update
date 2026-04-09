@@ -67,6 +67,11 @@
         <span class="nav-icon">📋</span>
         <span class="nav-label">Reports</span>
       </div>
+      <div class="nav-item" data-admin-tab="approvals" role="button" tabindex="0">
+        <span class="nav-icon">💰</span>
+        <span class="nav-label">Approvals</span>
+        <span class="nav-badge" id="navBadgePendingApprovals" style="background:#f59e0b">0</span>
+      </div>
       <div class="nav-item" data-admin-tab="duration" role="button" tabindex="0">
         <span class="nav-icon">⏱️</span>
         <span class="nav-label">Duration</span>
@@ -148,7 +153,9 @@
                 <th class="th-filterable" data-col="hoOrCo">HO/CO <span class="th-filter-icon">▼</span></th>
                 <th class="th-filterable" data-col="issueType">Issue Type <span class="th-filter-icon">▼</span></th>
                 <th>Issue</th>
-                <th>Amount</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Approval</th>
               </tr>
             </thead>
             <tbody id="completedTableBody"></tbody>
@@ -169,6 +176,52 @@
           <!-- USER CARDS -->
           <div class="section-title">👥 Team Members</div>
           <div class="admin-user-grid" id="adminUserGrid"></div>
+
+          <!-- FINANCIAL OVERVIEW -->
+          <div class="fin-section">
+            <div class="section-title">💰 Financial Overview</div>
+            <div class="fin-period-bar">
+              <button class="fin-period-btn active" data-fin-period="1">Today</button>
+              <button class="fin-period-btn" data-fin-period="5">5 Days</button>
+              <button class="fin-period-btn" data-fin-period="15">15 Days</button>
+              <button class="fin-period-btn" data-fin-period="30">1 Month</button>
+            </div>
+            <div class="fin-layout">
+              <div class="fin-chart-wrap">
+                <div class="fin-chart-container" id="finChartContainer">
+                  <canvas id="finChart"></canvas>
+                </div>
+              </div>
+              <div class="fin-summary-wrap">
+                <div class="fin-summary-card fin-expected">
+                  <div class="fin-summary-icon">📋</div>
+                  <div class="fin-summary-label">Expected Total</div>
+                  <div class="fin-summary-value" id="finExpectedTotal">₹0</div>
+                </div>
+                <div class="fin-summary-card fin-actual">
+                  <div class="fin-summary-icon">🧾</div>
+                  <div class="fin-summary-label">Actual Total</div>
+                  <div class="fin-summary-value" id="finActualTotal">₹0</div>
+                </div>
+                <div class="fin-summary-card fin-paid">
+                  <div class="fin-summary-icon">✅</div>
+                  <div class="fin-summary-label">Amount Paid</div>
+                  <div class="fin-summary-value" id="finPaidTotal">₹0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN: APPROVALS -->
+        <div id="adminApprovals" class="hidden">
+          <div class="section-title">💰 Amount Approvals</div>
+          <div class="approval-status-bar" id="approvalStatusBar">
+            <button class="approval-tab-btn active" data-approval-filter="pending">Pending</button>
+            <button class="approval-tab-btn" data-approval-filter="approved">Approved</button>
+            <button class="approval-tab-btn" data-approval-filter="rejected">Rejected</button>
+          </div>
+          <div id="approvalsGrid" class="approvals-grid"></div>
         </div>
 
         <!-- ADMIN: REPORTS -->
@@ -198,7 +251,9 @@
                   <th class="th-filterable" data-rptcol="issueType">Type <span class="th-filter-icon">▼</span></th>
                   <th>Issue</th>
                   <th>Status</th>
-                  <th>Amount</th>
+                  <th>Expected</th>
+                  <th>Actual</th>
+                  <th>Approval</th>
                 </tr>
               </thead>
               <tbody id="reportTableBody"></tbody>
@@ -358,7 +413,7 @@
         <div class="form-group"><label class="form-label">Solution <span style="color:var(--danger)">* (mandatory)</span></label><textarea class="form-control" id="fSolution" placeholder="Brief solution…" rows="3" autocomplete="off"></textarea><div class="word-counter"><span id="solutionWordCount">0</span> / 50 words</div><span class="form-error" id="errSolution"></span></div>
         <div class="form-group"><label class="form-label">Detailed Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><textarea class="form-control" id="fDetailedDesc" placeholder="Step-by-step details, root cause, notes…" rows="8" autocomplete="off"></textarea><div class="word-counter"><span id="descWordCount">0</span> words</div><span class="form-error" id="errDetailedDesc"></span></div>
       </div>
-      <div class="wizard-step hidden" id="step5"><h3 class="step-heading">💰 Amount</h3><div class="form-group"><label class="form-label">Amount (₹)</label><div class="amount-field"><span class="currency-symbol">₹</span><input class="form-control" type="number" id="fAmount" value="0" min="0" step="0.01" /></div></div></div>
+      <div class="wizard-step hidden" id="step5"><h3 class="step-heading">💰 Expected Amount</h3><div class="form-group"><label class="form-label">Expected Amount (₹)</label><div class="amount-field"><span class="currency-symbol">₹</span><input class="form-control" type="number" id="fAmount" value="0" min="0" step="0.01" /></div><span class="text-muted" style="font-size:0.75rem;margin-top:4px;display:block">Enter the estimated cost. Actual amount will be entered on completion.</span></div></div>
       <div class="wizard-step hidden" id="step6"><h3 class="step-heading">📄 Review & Save</h3><div class="review-summary" id="reviewSummary"></div></div>
     </div>
     <div class="modal-footer">
@@ -450,8 +505,16 @@
             </select>
           </div>
           <div class="detail-field">
-            <div class="detail-label">Amount (₹)</div>
+            <div class="detail-label">Expected Amount (₹)</div>
             <input class="form-control form-control-sm" type="number" id="edAmount" min="0" step="0.01" />
+          </div>
+          <div class="detail-field hidden" id="edActualAmountField">
+            <div class="detail-label">Actual Amount (₹)</div>
+            <div class="detail-value" id="edActualAmountDisplay"></div>
+          </div>
+          <div class="detail-field hidden" id="edAmountStatusField">
+            <div class="detail-label">Approval Status</div>
+            <div class="detail-value" id="edAmountStatusDisplay"></div>
           </div>
         </div>
 

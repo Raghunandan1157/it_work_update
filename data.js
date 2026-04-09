@@ -149,6 +149,12 @@ function toDb(task) {
     solution: task.solution,
     detailed_description: task.detailedDescription || null,
     amount: task.amount || 0,
+    expected_amount: task.expectedAmount || 0,
+    actual_amount: task.actualAmount !== undefined ? task.actualAmount : null,
+    amount_status: task.amountStatus || 'none',
+    amount_reviewed_by: task.amountReviewedBy || null,
+    amount_reviewed_at: task.amountReviewedAt || null,
+    amount_rejection_note: task.amountRejectionNote || null,
     completed: task.completed || false,
     completed_at: task.completedAt || null,
     created_by: task.createdBy
@@ -171,6 +177,12 @@ function fromDb(row) {
     solution: row.solution,
     detailedDescription: row.detailed_description,
     amount: row.amount,
+    expectedAmount: row.expected_amount || row.amount || 0,
+    actualAmount: row.actual_amount,
+    amountStatus: row.amount_status || 'none',
+    amountReviewedBy: row.amount_reviewed_by,
+    amountReviewedAt: row.amount_reviewed_at,
+    amountRejectionNote: row.amount_rejection_note,
     completed: row.completed,
     completedAt: row.completed_at,
     createdBy: row.created_by
@@ -213,6 +225,12 @@ const DataStore = {
     if (updates.solution !== undefined)            dbUpdates.solution = updates.solution;
     if (updates.detailedDescription !== undefined) dbUpdates.detailed_description = updates.detailedDescription;
     if (updates.amount !== undefined)              dbUpdates.amount = updates.amount;
+    if (updates.expectedAmount !== undefined)      dbUpdates.expected_amount = updates.expectedAmount;
+    if (updates.actualAmount !== undefined)        dbUpdates.actual_amount = updates.actualAmount;
+    if (updates.amountStatus !== undefined)        dbUpdates.amount_status = updates.amountStatus;
+    if (updates.amountReviewedBy !== undefined)    dbUpdates.amount_reviewed_by = updates.amountReviewedBy;
+    if (updates.amountReviewedAt !== undefined)    dbUpdates.amount_reviewed_at = updates.amountReviewedAt;
+    if (updates.amountRejectionNote !== undefined) dbUpdates.amount_rejection_note = updates.amountRejectionNote;
     if (updates.completed !== undefined)           dbUpdates.completed = updates.completed;
     if (updates.completedAt !== undefined)         dbUpdates.completed_at = updates.completedAt;
     if (updates.createdBy !== undefined)           dbUpdates.created_by = updates.createdBy;

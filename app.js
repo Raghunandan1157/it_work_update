@@ -105,8 +105,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       item.classList.add('active');
       adminTab = item.dataset.adminTab;
       $('adminOverview').classList.toggle('hidden', adminTab !== 'overview');
+      $('adminApprovals').classList.toggle('hidden', adminTab !== 'approvals');
       $('adminReports').classList.toggle('hidden', adminTab !== 'reports');
       $('adminDuration').classList.toggle('hidden', adminTab !== 'duration');
+      if (adminTab === 'approvals') await renderApprovals();
       if (adminTab === 'reports') await renderReport();
       if (adminTab === 'duration') await renderDuration();
       sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show');
@@ -120,18 +122,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderAdminOverview() {
       const [allTasks, stats] = await Promise.all([DataStore.getAll(), DataStore.getStats()]);
+      const pendingApprovals = allTasks.filter(t => t.amountStatus === 'pending').length;
+      updateApprovalBadge(pendingApprovals);
 
       // Top stat cards (clickable)
       $('adminStatsGrid').innerHTML = `
         <div class="stat-card accent-blue clickable" data-goto="reports" data-status="all"><div class="stat-icon blue">📋</div><div><div class="stat-num">${stats.total}</div><div class="stat-label">Total Tasks</div></div></div>
         <div class="stat-card accent-orange clickable" data-goto="reports" data-status="inprogress"><div class="stat-icon orange">⏳</div><div><div class="stat-num">${stats.inProgress}</div><div class="stat-label">In Progress</div></div></div>
         <div class="stat-card accent-green clickable" data-goto="reports" data-status="completed"><div class="stat-icon green">✅</div><div><div class="stat-num">${stats.completed}</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card accent-amber clickable" data-goto="approvals"><div class="stat-icon amber">💰</div><div><div class="stat-num">${pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div></div>
         <div class="stat-card accent-cyan"><div class="stat-icon cyan">👥</div><div><div class="stat-num">${staffUsers.length}</div><div class="stat-label">Staff Members</div></div></div>
       `;
 
-      // Stat card click → go to reports with filter
+      // Stat card click → go to reports/approvals with filter
       $('adminStatsGrid').querySelectorAll('[data-goto]').forEach(card => {
         card.addEventListener('click', async () => {
+          const goto = card.dataset.goto;
+          if (goto === 'approvals') {
+            document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
+            document.querySelector('[data-admin-tab="approvals"]').classList.add('active');
+            adminTab = 'approvals';
+            $('adminOverview').classList.add('hidden');
+            $('adminApprovals').classList.remove('hidden');
+            $('adminReports').classList.add('hidden');
+            $('adminDuration').classList.add('hidden');
+            await renderApprovals();
+            return;
+          }
           reportStatusFilter = card.dataset.status;
           selectedStaffId = '';
           companyFilter = ''; colFilters.date = []; colFilters.branch = []; colFilters.issueType = []; colFilters.hoOrCo = [];
@@ -140,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.querySelector('[data-admin-tab="reports"]').classList.add('active');
           adminTab = 'reports';
           $('adminOverview').classList.add('hidden');
+          $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
           $('adminDuration').classList.add('hidden');
           $('staffSelector').innerHTML = '';
@@ -188,8 +206,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           selectedStaffId = card.dataset.userId;
           document.querySelectorAll('[data-admin-tab]').forEach(n => n.classList.remove('active'));
           document.querySelector('[data-admin-tab="reports"]').classList.add('active');
+          adminTab = 'reports';
           $('adminOverview').classList.add('hidden');
+          $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
+          $('adminDuration').classList.add('hidden');
           $('staffSelector').innerHTML = '';
           await renderStaffSelector();
           await renderReport();
@@ -212,6 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.querySelector('[data-admin-tab="reports"]').classList.add('active');
           adminTab = 'reports';
           $('adminOverview').classList.add('hidden');
+          $('adminApprovals').classList.add('hidden');
           $('adminReports').classList.remove('hidden');
           $('adminDuration').classList.add('hidden');
           $('staffSelector').innerHTML = '';
@@ -220,6 +242,320 @@ document.addEventListener('DOMContentLoaded', async () => {
           sidebar.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show');
         });
       });
+    }
+
+    // ─── FINANCIAL OVERVIEW ────────────────────────────────────────────────────
+    let finPeriodDays = 1;
+
+    document.querySelectorAll('.fin-period-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        document.querySelectorAll('.fin-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        finPeriodDays = parseInt(btn.dataset.finPeriod);
+        await renderFinancialOverview();
+      });
+    });
+
+    async function renderFinancialOverview() {
+      const allTasks = await DataStore.getAll();
+
+      // Filter by period
+      const now = new Date();
+      const cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - finPeriodDays);
+      cutoff.setHours(0, 0, 0, 0);
+
+      const tasks = allTasks.filter(t => {
+        if (!t.timestamp) return false;
+        const d = new Date(t.timestamp);
+        return d >= cutoff;
+      });
+
+      // Calculate totals
+      const expectedTotal = tasks.reduce((s, t) => s + (t.expectedAmount || t.amount || 0), 0);
+      const actualTotal = tasks.filter(t => t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
+      const paidTotal = tasks.filter(t => t.amountStatus === 'approved' && t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
+
+      $('finExpectedTotal').textContent = '₹' + expectedTotal.toLocaleString('en-IN');
+      $('finActualTotal').textContent = '₹' + actualTotal.toLocaleString('en-IN');
+      $('finPaidTotal').textContent = '₹' + paidTotal.toLocaleString('en-IN');
+
+      // Build chart data — group by date
+      const dateMap = {};
+      tasks.forEach(t => {
+        const dateStr = extractDate(t.timestamp);
+        if (!dateStr) return;
+        if (!dateMap[dateStr]) dateMap[dateStr] = { expected: 0, actual: 0, paid: 0 };
+        dateMap[dateStr].expected += (t.expectedAmount || t.amount || 0);
+        if (t.actualAmount != null) dateMap[dateStr].actual += t.actualAmount;
+        if (t.amountStatus === 'approved' && t.actualAmount != null) dateMap[dateStr].paid += t.actualAmount;
+      });
+
+      const dates = Object.keys(dateMap).sort();
+      const expectedVals = dates.map(d => dateMap[d].expected);
+      const actualVals = dates.map(d => dateMap[d].actual);
+      const paidVals = dates.map(d => dateMap[d].paid);
+      const labels = dates.map(d => formatDateDMY(d));
+
+      drawFinChart(labels, expectedVals, actualVals, paidVals);
+    }
+
+    function drawFinChart(labels, expected, actual, paid) {
+      const container = $('finChartContainer');
+      const canvas = $('finChart');
+      if (!canvas || !container) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const W = container.clientWidth;
+      const H = container.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      // Empty state
+      if (!labels.length) {
+        ctx.fillStyle = '#94a3b8'; ctx.font = '500 13px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('No data for this period', W / 2, H / 2);
+        return;
+      }
+
+      const padL = 56, padR = 16, padT = 16, padB = 44;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+      const allVals = [...expected, ...actual, ...paid];
+      const maxVal = Math.max(...allVals, 1) * 1.1; // 10% headroom
+      const toY = v => padT + chartH - (v / maxVal) * chartH;
+
+      const colors = { expected: '#3b82f6', actual: '#f59e0b', paid: '#16a34a' };
+
+      // Y-axis grid lines
+      const ySteps = 4;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      for (let i = 0; i <= ySteps; i++) {
+        const val = (maxVal * i / ySteps);
+        const y = toY(val);
+        ctx.strokeStyle = i === 0 ? '#cbd5e1' : '#f1f5f9'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        ctx.fillStyle = '#94a3b8'; ctx.font = '11px Inter, system-ui, sans-serif';
+        const label = val >= 100000 ? '₹' + (val / 100000).toFixed(1) + 'L' : val >= 1000 ? '₹' + (val / 1000).toFixed(0) + 'k' : '₹' + Math.round(val);
+        ctx.fillText(label, padL - 8, y);
+      }
+
+      // --- BARS for Expected (blue, rounded top) ---
+      const barGroupW = chartW / labels.length;
+      const barW = Math.max(8, Math.min(barGroupW * 0.45, 36));
+
+      labels.forEach((lbl, i) => {
+        const cx = padL + barGroupW * i + barGroupW / 2;
+        const val = expected[i];
+        if (val <= 0) return;
+        const h = (val / maxVal) * chartH;
+        const x = cx - barW / 2;
+        const y = padT + chartH - h;
+        const r = Math.min(5, barW / 3);
+
+        // Bar with gradient
+        const grad = ctx.createLinearGradient(x, y, x, padT + chartH);
+        grad.addColorStop(0, 'rgba(59,130,246,0.85)');
+        grad.addColorStop(1, 'rgba(59,130,246,0.35)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x, padT + chartH);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.lineTo(x + barW - r, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+        ctx.lineTo(x + barW, padT + chartH);
+        ctx.closePath();
+        ctx.fill();
+
+        // X label
+        ctx.fillStyle = '#64748b'; ctx.font = '10px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(lbl, cx, padT + chartH + 6);
+      });
+
+      // --- Smooth LINE helper ---
+      function drawSmoothLine(data, color, dashed) {
+        const pts = data.map((v, i) => ({
+          x: padL + barGroupW * i + barGroupW / 2,
+          y: toY(v)
+        }));
+        if (pts.length < 1) return;
+
+        ctx.save();
+        ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        if (dashed) ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+
+        if (pts.length === 1) {
+          // Single point — draw a dot
+          ctx.arc(pts[0].x, pts[0].y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.fill();
+          ctx.restore(); return;
+        }
+
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = pts[Math.max(i - 1, 0)];
+          const p1 = pts[i];
+          const p2 = pts[i + 1];
+          const p3 = pts[Math.min(i + 2, pts.length - 1)];
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+        ctx.stroke();
+
+        // Dots at each point
+        pts.forEach(p => {
+          ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#fff'; ctx.fill();
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+        });
+        ctx.restore();
+      }
+
+      // --- LINES for Actual (solid amber) and Paid (dashed green) ---
+      drawSmoothLine(actual, colors.actual, false);
+      drawSmoothLine(paid, colors.paid, true);
+
+      // --- LEGEND (bottom) ---
+      const legendY = H - 10;
+      ctx.textBaseline = 'middle'; ctx.font = '11px Inter, system-ui, sans-serif';
+      const items = [
+        { label: 'Expected', color: colors.expected, type: 'bar' },
+        { label: 'Actual', color: colors.actual, type: 'line' },
+        { label: 'Paid', color: colors.paid, type: 'dash' }
+      ];
+      // center legend
+      const totalW = items.reduce((s, it) => s + ctx.measureText(it.label).width + 30, 0);
+      let lx = (W - totalW) / 2;
+      items.forEach(it => {
+        if (it.type === 'bar') {
+          ctx.fillStyle = it.color;
+          ctx.fillRect(lx, legendY - 5, 14, 10);
+        } else {
+          ctx.strokeStyle = it.color; ctx.lineWidth = 2.5;
+          if (it.type === 'dash') ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(lx, legendY); ctx.lineTo(lx + 14, legendY); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.fillStyle = '#475569'; ctx.textAlign = 'left';
+        ctx.fillText(it.label, lx + 18, legendY);
+        lx += ctx.measureText(it.label).width + 30;
+      });
+    }
+
+    // ─── APPROVALS ─────────────────────────────────────────────────────────────
+    let approvalFilter = 'pending';
+
+    function updateApprovalBadge(count) {
+      const badge = $('navBadgePendingApprovals');
+      if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+    }
+
+    document.querySelectorAll('.approval-tab-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        document.querySelectorAll('.approval-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        approvalFilter = btn.dataset.approvalFilter;
+        await renderApprovals();
+      });
+    });
+
+    async function renderApprovals() {
+      const allTasks = await DataStore.getAll();
+      const tasks = allTasks.filter(t => t.amountStatus === approvalFilter);
+      const pendingCount = allTasks.filter(t => t.amountStatus === 'pending').length;
+      updateApprovalBadge(pendingCount);
+
+      if (!tasks.length) {
+        $('approvalsGrid').innerHTML = `<div class="empty-state" style="padding:40px"><div class="empty-icon">${approvalFilter === 'pending' ? '✅' : '📋'}</div><h3>No ${approvalFilter} approvals</h3><p>${approvalFilter === 'pending' ? 'All caught up! No tasks awaiting your approval.' : 'No tasks with this status.'}</p></div>`;
+        return;
+      }
+
+      $('approvalsGrid').innerHTML = tasks.map(t => {
+        const expected = (t.expectedAmount || 0);
+        const actual = (t.actualAmount || 0);
+        const diff = actual - expected;
+        const diffClass = diff > 0 ? 'amt-over' : diff < 0 ? 'amt-under' : 'amt-equal';
+        const diffText = diff > 0 ? `+₹${diff.toLocaleString('en-IN')}` : diff < 0 ? `-₹${Math.abs(diff).toLocaleString('en-IN')}` : 'No change';
+
+        let actions = '';
+        if (approvalFilter === 'pending') {
+          actions = `<div class="approval-actions"><button class="btn btn-success btn-sm" data-approve="${t.taskId}">✅ Approve</button><button class="btn btn-danger btn-sm" data-reject="${t.taskId}">❌ Reject</button></div>`;
+        } else if (approvalFilter === 'approved') {
+          actions = `<div class="approval-meta">Approved by ${esc(t.amountReviewedBy || '—')}${t.amountReviewedAt ? ' on ' + esc(t.amountReviewedAt) : ''}</div>`;
+        } else if (approvalFilter === 'rejected') {
+          actions = `<div class="approval-meta">Rejected by ${esc(t.amountReviewedBy || '—')}${t.amountRejectionNote ? ' — ' + esc(t.amountRejectionNote) : ''}</div>`;
+        }
+
+        return `<div class="approval-card">
+          <div class="approval-card-header">
+            <div><span class="task-card-id">${esc(t.taskId)}</span><span class="badge ${t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success'}" style="margin-left:8px">${esc(t.hoOrCo)}</span></div>
+            <span class="approval-date">${esc(formatDateDMY(extractDate(t.timestamp)))}</span>
+          </div>
+          <div class="approval-card-info">
+            <div class="approval-detail"><span class="approval-detail-label">Created By</span><span>${esc(t.createdBy)}</span></div>
+            <div class="approval-detail"><span class="approval-detail-label">Branch</span><span>${esc(t.branch)}</span></div>
+            <div class="approval-detail"><span class="approval-detail-label">Issue</span><span>${esc(displayIssue(t))}</span></div>
+          </div>
+          <div class="approval-amounts">
+            <div class="approval-amt-box"><div class="approval-amt-label">Expected</div><div class="approval-amt-value">₹${expected.toLocaleString('en-IN')}</div></div>
+            <div class="approval-amt-arrow">→</div>
+            <div class="approval-amt-box"><div class="approval-amt-label">Actual</div><div class="approval-amt-value" style="font-weight:700">₹${actual.toLocaleString('en-IN')}</div></div>
+            <div class="approval-amt-diff ${diffClass}">${diffText}</div>
+          </div>
+          ${actions}
+        </div>`;
+      }).join('');
+
+      // Bind approve/reject buttons
+      $('approvalsGrid').querySelectorAll('[data-approve]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const taskId = btn.dataset.approve;
+          await DataStore.update(taskId, { amountStatus: 'approved', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()) });
+          showToast('Approved!', 'success');
+          await renderApprovals();
+        });
+      });
+      $('approvalsGrid').querySelectorAll('[data-reject]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const taskId = btn.dataset.reject;
+          showRejectDialog(taskId);
+        });
+      });
+    }
+
+    function showRejectDialog(taskId) {
+      const o = document.createElement('div'); o.className = 'confirm-overlay';
+      o.innerHTML = `<div class="confirm-box" style="max-width:400px">
+        <div class="confirm-title">❌ Reject Amount</div>
+        <div class="confirm-message">
+          <label style="font-size:0.85rem;font-weight:500;margin-bottom:4px;display:block">Reason for rejection (optional)</label>
+          <textarea class="form-control" id="rejectNote" rows="3" placeholder="e.g., Get a cheaper quote, amount seems too high…" style="margin-top:4px"></textarea>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn btn-secondary" id="rejectCancel">Cancel</button>
+          <button class="btn btn-danger" id="rejectConfirm">❌ Reject</button>
+        </div>
+      </div>`;
+      document.body.appendChild(o);
+      o.querySelector('#rejectCancel').addEventListener('click', () => o.remove());
+      o.querySelector('#rejectConfirm').addEventListener('click', async () => {
+        const note = o.querySelector('#rejectNote').value.trim();
+        o.remove();
+        await DataStore.update(taskId, { amountStatus: 'rejected', amountReviewedBy: user.name, amountReviewedAt: formatDateTime(new Date()), amountRejectionNote: note || null });
+        showToast('Rejected.', 'warning');
+        await renderApprovals();
+      });
+      o.addEventListener('click', e => { if (e.target === o) o.remove(); });
     }
 
     // ─── REPORTS ──────────────────────────────────────────────────────────────
@@ -291,8 +627,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const showStaff = colFilters.hoOrCo.length > 0;
       const headers = showStaff
-        ? ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Staff Details', 'Issue Type', 'Issue Description', 'Status', 'Amount']
-        : ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Amount'];
+        ? ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Staff Details', 'Issue Type', 'Issue Description', 'Status', 'Expected Amount', 'Actual Amount', 'Approval']
+        : ['Sr. No', 'Date', 'Created By', 'Branch', 'HO/CO', 'Issue Type', 'Issue Description', 'Status', 'Expected Amount', 'Actual Amount', 'Approval'];
 
       const csvEscape = (val) => {
         const s = String(val == null ? '' : val).replace(/\u2014/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
@@ -313,7 +649,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           t.issueType,
           displayIssue(t) || '',
           t.completed ? 'Completed' : 'In Progress',
-          t.amount || 0
+          t.expectedAmount || t.amount || 0,
+          t.actualAmount != null ? t.actualAmount : '',
+          t.amountStatus === 'approved' ? 'Approved' : t.amountStatus === 'pending' ? 'Pending' : t.amountStatus === 'rejected' ? 'Rejected' : ''
         );
         return base.map(csvEscape).join(',');
       });
@@ -420,17 +758,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (colFilters.hoOrCo.length) tasks = tasks.filter(t => colFilters.hoOrCo.includes(t.hoOrCo));
 
       const showStaffCol = colFilters.hoOrCo.length > 0;
-      const totalCols = showStaffCol ? 10 : 9;
+      const totalCols = showStaffCol ? 12 : 11;
 
       const ip = tasks.filter(t => !t.completed).length;
       const done = tasks.filter(t => t.completed).length;
-      const totalAmt = tasks.reduce((s, t) => s + (t.amount || 0), 0);
+      const totalExpected = tasks.reduce((s, t) => s + (t.expectedAmount || t.amount || 0), 0);
+      const approvedAmt = tasks.filter(t => t.amountStatus === 'approved').reduce((s, t) => s + (t.actualAmount || t.amount || 0), 0);
+      const pendingAmt = tasks.filter(t => t.amountStatus === 'pending').reduce((s, t) => s + (t.actualAmount || 0), 0);
 
       $('reportSummary').innerHTML = `
         <div class="report-summary-card"><div class="report-summary-num">${tasks.length}</div><div class="report-summary-label">Total</div></div>
         <div class="report-summary-card"><div class="report-summary-num" style="color:var(--warning)">${ip}</div><div class="report-summary-label">In Progress</div></div>
         <div class="report-summary-card"><div class="report-summary-num" style="color:var(--success)">${done}</div><div class="report-summary-label">Completed</div></div>
-        <div class="report-summary-card"><div class="report-summary-num" style="color:var(--primary)">₹${totalAmt.toLocaleString('en-IN')}</div><div class="report-summary-label">Total Amount</div></div>
+        <div class="report-summary-card"><div class="report-summary-num" style="color:var(--primary)">₹${totalExpected.toLocaleString('en-IN')}</div><div class="report-summary-label">Expected Total</div></div>
+        <div class="report-summary-card"><div class="report-summary-num" style="color:#16a34a">₹${approvedAmt.toLocaleString('en-IN')}</div><div class="report-summary-label">Approved</div></div>
+        ${pendingAmt > 0 ? `<div class="report-summary-card"><div class="report-summary-num" style="color:#f59e0b">₹${pendingAmt.toLocaleString('en-IN')}</div><div class="report-summary-label">Pending</div></div>` : ''}
       `;
 
       // Dynamically add/remove Staff Details header
@@ -467,7 +809,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td><span class="badge ${typeCls}">${esc(t.issueType)}</span></td>
           <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(displayIssue(t))}</td>
           <td><span class="badge ${statusCls}">${statusTxt}</span></td>
-          <td>₹${(t.amount || 0).toLocaleString('en-IN')}</td>
+          <td>₹${(t.expectedAmount || t.amount || 0).toLocaleString('en-IN')}</td>
+          <td>${t.actualAmount != null ? '₹' + t.actualAmount.toLocaleString('en-IN') : '—'}</td>
+          <td>${(() => { const s = t.amountStatus || 'none'; if (s === 'approved') return '<span class="badge badge-success">Approved</span>'; if (s === 'pending') return '<span class="badge badge-amount-pending">Pending</span>'; if (s === 'rejected') return '<span class="badge badge-amount-rejected">Rejected</span>'; return '—'; })()}</td>
         </tr>`;
       }).join('');
 
@@ -719,10 +1063,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    await Promise.all([renderAdminOverview(), renderStaffSelector().then(() => renderReport())]);
+    await Promise.all([renderAdminOverview(), renderFinancialOverview(), renderStaffSelector().then(() => renderReport())]);
 
     // Refresh periodically
-    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'reports') await renderReport(); if (adminTab === 'duration') await renderDuration(); }, 5000);
+    setInterval(async () => { await renderAdminOverview(); if (adminTab === 'overview') await renderFinancialOverview(); if (adminTab === 'approvals') await renderApprovals(); if (adminTab === 'reports') await renderReport(); if (adminTab === 'duration') await renderDuration(); }, 5000);
 
     // Shared view modal for admin
     function openViewSummary(taskId) { sharedOpenViewSummary(taskId); }
@@ -1119,8 +1463,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     edSolution.value = task.solution || '';
     edDetailedDesc.value = task.detailedDescription || '';
-    edAmount.value = task.amount ?? 0;
+    edAmount.value = task.expectedAmount ?? task.amount ?? 0;
+    // Show approval status for all tasks
+    const edActualField = $('edActualAmountField');
+    const edStatusField = $('edAmountStatusField');
+    if (task.actualAmount != null) {
+      edActualField.classList.remove('hidden');
+      $('edActualAmountDisplay').textContent = '₹' + (task.actualAmount || 0).toLocaleString('en-IN');
+    } else {
+      edActualField.classList.add('hidden');
+    }
+    if (task.amountStatus && task.amountStatus !== 'none') {
+      edStatusField.classList.remove('hidden');
+      const statusLabels = { pending: '⏳ Pending Approval', approved: '✅ Approved', rejected: '❌ Rejected' };
+      $('edAmountStatusDisplay').innerHTML = statusLabels[task.amountStatus] || '—';
+      if (task.amountStatus === 'rejected' && task.amountRejectionNote) {
+        $('edAmountStatusDisplay').innerHTML += `<div style="font-size:0.8rem;color:var(--danger);margin-top:4px">Note: ${esc(task.amountRejectionNote)}</div>`;
+      }
+    } else {
+      edStatusField.classList.add('hidden');
+    }
     $('editError').textContent = '';
+
+    // Only show Complete button if admin has approved
+    $('editCompleteBtn').classList.toggle('hidden', task.amountStatus !== 'approved' || task.completed);
 
     editOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1155,7 +1521,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       issueDescription: edIssueDesc.value.trim(),
       solution: edSolution.value.trim(),
       detailedDescription: edDetailedDesc.value.trim(),
-      amount: parseFloat(edAmount.value) || 0
+      amount: parseFloat(edAmount.value) || 0,
+      expectedAmount: parseFloat(edAmount.value) || 0
     };
   }
 
@@ -1185,13 +1552,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('editCompleteBtn').addEventListener('click', () => {
     if (saving || !validateEditForm()) return;
-    showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
+    const expectedAmt = parseFloat($('edAmount').value) || 0;
+    showActualAmountDialog(expectedAmt, async (actualAmount) => {
       if (saving) return;
       saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
       try {
         const updates = await getEditFormData();
         updates.completed = true;
         updates.completedAt = formatDateTime(new Date());
+        updates.actualAmount = actualAmount;
+        updates.amount = actualAmount;
         await DataStore.update(editingId, updates);
         showToast('Completed!', 'success');
         closeEdit(); await renderAll();
@@ -1204,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     for (let i = 1; i <= TOTAL_STEPS; i++) { const el = $('step' + i); if (el) el.classList.toggle('hidden', i !== step); }
     stepperBar.querySelectorAll('.stepper-step').forEach(el => { const s = parseInt(el.dataset.step); el.classList.toggle('active', s === step); el.classList.toggle('done', s < step); });
     btnPrev.classList.toggle('hidden', step === 1); btnNext.classList.toggle('hidden', step === TOTAL_STEPS);
-    btnSave.classList.toggle('hidden', step !== TOTAL_STEPS); btnComplete.classList.toggle('hidden', step !== TOTAL_STEPS);
+    btnSave.classList.toggle('hidden', step !== TOTAL_STEPS); btnComplete.classList.add('hidden');
     if (step === TOTAL_STEPS) buildReviewSummary();
   }
   function openModal() { modalOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -1230,7 +1600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="detail-field"><div class="detail-label">HO / CO</div><div class="detail-value">${esc(fHoCo.value)}</div></div>
       ${(() => { const hoCoR = isHoCo(fBranch.value); let sn, si, sd; if (hoCoR) { sn = fStaffName.value === '__other__' ? fCustomStaffName.value : fStaffName.value; si = fStaffName.value === '__other__' ? fCustomStaffId.value : fStaffId.value; sd = ''; } else { sn = fBranchStaffName.value; si = fBranchStaffId.value; sd = fBranchDesignation.value; } if (!sn) return ''; let staffTxt = esc(sn); if (sd) staffTxt += ' — ' + esc(sd); if (si) staffTxt += ' (' + esc(si) + ')'; return `<div class="detail-field"><div class="detail-label">Staff</div><div class="detail-value">${staffTxt}</div></div>`; })()}
       <div class="detail-field"><div class="detail-label">Issue Type</div><div class="detail-value">${esc(fIssueType.value)}</div></div>
-      <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">₹${amt.toLocaleString('en-IN')}</div></div>
+      <div class="detail-field"><div class="detail-label">Expected Amount</div><div class="detail-value">₹${amt.toLocaleString('en-IN')}</div></div>
     </div><div style="margin-top:10px"><div class="detail-label">Issue</div><div class="detail-value" style="margin-top:3px">${esc(fIssueCategory.value === 'Other' ? fIssueDesc.value : (fIssueDesc.value.trim() ? fIssueCategory.value + ' — ' + fIssueDesc.value : fIssueCategory.value))}</div></div>
     <div style="margin-top:10px"><div class="detail-label">Solution</div><div class="detail-value" style="margin-top:3px">${esc(fSolution.value)}</div></div>${desc}`;
   }
@@ -1253,27 +1623,82 @@ document.addEventListener('DOMContentLoaded', async () => {
       staffName = fBranchStaffName.value.trim();
       staffId = fBranchStaffId.value.trim();
     }
-    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName, staffId, staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: parseFloat(fAmount.value) || 0, completed: false, completedAt: null, createdBy: user.name };
+    const expectedAmt = parseFloat(fAmount.value) || 0;
+    return { taskId, timestamp: `${fDate.value} ${fTime.value}`, branch: fBranch.value, hoOrCo: fHoCo.value, staffName, staffId, staffDesignation: hoCoForm ? '' : fBranchDesignation.value.trim(), issueType: fIssueType.value, issueCategory: fIssueCategory.value, issueDescription: fIssueDesc.value.trim(), solution: fSolution.value.trim(), detailedDescription: fDetailedDesc.value.trim(), amount: expectedAmt, expectedAmount: expectedAmt, actualAmount: null, amountStatus: 'pending', completed: false, completedAt: null, createdBy: user.name };
   }
+  function showActualAmountDialog(expectedAmount, onConfirm) {
+    const o = document.createElement('div'); o.className = 'confirm-overlay';
+    const expFmt = (expectedAmount || 0).toLocaleString('en-IN');
+    o.innerHTML = `<div class="confirm-box" style="max-width:400px">
+      <div class="confirm-title">💰 Enter Actual Amount</div>
+      <div class="confirm-message">
+        <div style="margin-bottom:12px">Enter the actual cost for this task.</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:8px;margin-bottom:12px">
+          <span style="color:var(--text-muted)">Expected Amount</span>
+          <span style="font-weight:600">₹${expFmt}</span>
+        </div>
+        <label style="font-size:0.85rem;font-weight:500;margin-bottom:4px;display:block">Actual Amount (₹)</label>
+        <div class="amount-field" style="margin-top:4px">
+          <span class="currency-symbol">₹</span>
+          <input class="form-control" type="number" id="actualAmountInput" value="${expectedAmount || 0}" min="0" step="0.01" style="font-size:1.1rem;font-weight:600" />
+        </div>
+        <div id="amountDiffNote" style="margin-top:8px;font-size:0.8rem;padding:6px 10px;border-radius:6px;display:none"></div>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="actualAmtCancel">Cancel</button>
+        <button class="btn btn-success" id="actualAmtConfirm">✅ Confirm & Complete</button>
+      </div>
+    </div>`;
+    document.body.appendChild(o);
+    const inp = o.querySelector('#actualAmountInput');
+    const diffNote = o.querySelector('#amountDiffNote');
+    function updateDiff() {
+      const actual = parseFloat(inp.value) || 0;
+      const diff = actual - (expectedAmount || 0);
+      if (diff === 0) { diffNote.style.display = 'none'; return; }
+      diffNote.style.display = 'block';
+      if (diff > 0) {
+        diffNote.style.background = '#fef2f2'; diffNote.style.color = '#dc2626';
+        diffNote.textContent = `⬆ ₹${diff.toLocaleString('en-IN')} more than expected`;
+      } else {
+        diffNote.style.background = '#f0fdf4'; diffNote.style.color = '#16a34a';
+        diffNote.textContent = `⬇ ₹${Math.abs(diff).toLocaleString('en-IN')} less than expected`;
+      }
+    }
+    inp.addEventListener('input', updateDiff);
+    inp.addEventListener('focus', () => { if (inp.value === '0' || inp.value === '0.00') inp.value = ''; });
+    inp.addEventListener('blur', () => { if (!inp.value) inp.value = 0; });
+    updateDiff();
+    inp.select();
+    o.querySelector('#actualAmtCancel').addEventListener('click', () => o.remove());
+    o.querySelector('#actualAmtConfirm').addEventListener('click', () => { const val = parseFloat(inp.value) || 0; o.remove(); onConfirm(val); });
+    o.addEventListener('click', e => { if (e.target === o) o.remove(); });
+  }
+
   var saving = false;
   async function handleSave() {
     if (saving) return;
     saving = true; btnSave.disabled = true; btnComplete.disabled = true;
     try {
       const d = await buildTaskFromForm(); if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
-      if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated.', 'success'); }
-      else { await DataStore.add(d); showToast('Saved.', 'success'); }
+      if (state.editingTaskId) { await DataStore.update(state.editingTaskId, d); showToast('Updated & sent for approval.', 'success'); }
+      else { await DataStore.add(d); showToast('Task created & sent for approval.', 'success'); }
       closeModal(); await renderAll();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
     saving = false; btnSave.disabled = false; btnComplete.disabled = false;
   }
   async function handleComplete() {
     if (saving) return;
-    showConfirm('✅ Complete Task', 'Mark as completed? Cannot be undone.', 'Complete', async () => {
+    const expectedAmt = parseFloat(fAmount.value) || 0;
+    showActualAmountDialog(expectedAmt, async (actualAmount) => {
       if (saving) return;
       saving = true; btnSave.disabled = true; btnComplete.disabled = true;
       try {
-        const d = await buildTaskFromForm(); d.completed = true; d.completedAt = formatDateTime(new Date()); if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
+        const d = await buildTaskFromForm();
+        d.completed = true; d.completedAt = formatDateTime(new Date());
+        d.actualAmount = actualAmount;
+        d.amount = actualAmount;
+        if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
         closeModal(); showToast('Completed!', 'success'); await renderAll();
       } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -1397,11 +1822,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     Object.keys(completedColFilters).forEach(col => { const arr = completedColFilters[col]; if (!arr || !arr.length) return; tasks = tasks.filter(t => { if (col === 'branch') return arr.includes(t.branch); if (col === 'issueType') return arr.includes(t.issueType); if (col === 'hoOrCo') return arr.includes(t.hoOrCo); if (col === 'date') return t.timestamp && arr.includes(extractDate(t.timestamp)); return true; }); });
     renderActiveFilterBar();
     document.querySelectorAll('.th-filterable[data-col]').forEach(th => th.classList.toggle('filtered', !!(completedColFilters[th.dataset.col] && completedColFilters[th.dataset.col].length)));
-    if (!tasks.length) { completedTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No completed tasks.</td></tr>'; return; }
+    if (!tasks.length) { completedTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">No completed tasks.</td></tr>'; return; }
     completedTableBody.innerHTML = tasks.map(t => {
       const tc = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[t.issueType] || 'badge-gray';
       const hc = t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
-      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(formatDateDMY(extractDate(t.timestamp)))}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(displayIssue(t))}</td><td>₹${(t.amount || 0).toLocaleString('en-IN')}</td></tr>`;
+      const approvalBadge = t.amountStatus === 'approved' ? '<span class="badge badge-success">Approved</span>' : t.amountStatus === 'pending' ? '<span class="badge badge-amount-pending">Pending</span>' : t.amountStatus === 'rejected' ? '<span class="badge badge-amount-rejected">Rejected</span>' : '—';
+      return `<tr data-view="${t.taskId}"><td class="task-id-cell">${esc(t.taskId)}</td><td>${esc(formatDateDMY(extractDate(t.timestamp)))}</td><td>${esc(t.branch)}</td><td><span class="badge ${hc}">${esc(t.hoOrCo)}</span></td><td><span class="badge ${tc}">${esc(t.issueType)}</span></td><td>${esc(displayIssue(t))}</td><td>₹${(t.expectedAmount || t.amount || 0).toLocaleString('en-IN')}</td><td>${t.actualAmount != null ? '₹' + t.actualAmount.toLocaleString('en-IN') : '—'}</td><td>${approvalBadge}</td></tr>`;
     }).join('');
     completedTableBody.querySelectorAll('[data-view]').forEach(row => { row.addEventListener('click', () => sharedOpenViewSummary(row.dataset.view)); });
   }
@@ -1428,13 +1854,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tb = { Software: 'badge-primary', Hardware: 'badge-warning', Both: 'badge-info' }[task.issueType] || 'badge-gray';
     const hb = task.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success';
     const staff = task.staffName ? `<div class="task-field"><span class="task-field-label">Staff</span><span class="task-field-value">${esc(task.staffName)}${task.staffDesignation ? ' — ' + esc(task.staffDesignation) : ''}${task.staffId ? ' (' + esc(task.staffId) + ')' : ''}</span></div>` : '';
-    return `<div class="task-card"><div class="task-status-bar"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span></div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div></div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button><button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Completed</button></div></div>`;
+    const isApproved = task.amountStatus === 'approved';
+    const isRejected = task.amountStatus === 'rejected';
+    const isPending = task.amountStatus === 'pending';
+    const statusBadge = isPending ? '<span class="badge badge-amount-pending">⏳ Awaiting Approval</span>' : isRejected ? '<span class="badge badge-amount-rejected">❌ Rejected</span>' : isApproved ? '<span class="badge badge-success">✅ Approved</span>' : '';
+    const expAmt = task.expectedAmount || task.amount || 0;
+    const amtField = expAmt > 0 ? `<div class="task-field"><span class="task-field-label">Expected Amount</span><span class="task-field-value">₹${expAmt.toLocaleString('en-IN')}</span></div>` : '';
+    const rejNote = isRejected && task.amountRejectionNote ? `<div class="task-field"><span class="task-field-label" style="color:var(--danger)">Rejection Note</span><span class="task-field-value" style="color:var(--danger)">${esc(task.amountRejectionNote)}</span></div>` : '';
+    const completeBtn = isApproved ? `<button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Complete</button>` : '';
+    return `<div class="task-card"><div class="task-status-bar${isPending ? ' pending' : isRejected ? ' rejected' : isApproved ? ' approved' : ''}"></div><div class="task-card-header"><div><div class="task-card-id">${esc(task.taskId)}</div><div class="task-card-badges" style="margin-top:5px"><span class="badge badge-warning">⏳ In Progress</span><span class="badge ${tb}">${esc(task.issueType)}</span><span class="badge ${hb}">${esc(task.hoOrCo)}</span>${statusBadge}</div></div></div><div class="task-card-body"><div class="task-field"><span class="task-field-label">Branch</span><span class="task-field-value">${esc(task.branch)}</span></div>${staff}<div class="task-field"><span class="task-field-label">Issue</span><span class="task-field-value truncate">${esc(displayIssue(task))}</span></div><div class="task-field"><span class="task-field-label">Solution</span><span class="task-field-value truncate">${esc(task.solution)}</span></div>${amtField}${rejNote}</div><div class="task-card-footer"><span class="task-timestamp">🕐 ${esc(task.timestamp)}</span><button class="btn btn-secondary btn-sm" data-edit="${task.taskId}">✏️ Edit</button>${completeBtn}</div></div>`;
   }
 
   async function handleQuickComplete(taskId) {
     const task = await DataStore.getById(taskId); if (!task) return;
-    showConfirm('✅ Complete', `Mark <strong>${task.taskId}</strong> as completed?`, 'Complete', async () => {
-      await DataStore.update(taskId, { completed: true, completedAt: formatDateTime(new Date()) }); showToast('Completed!', 'success'); await renderAll();
+    if (task.amountStatus !== 'approved') { showToast('Task must be approved by admin before completing.', 'warning'); return; }
+    const expectedAmt = task.expectedAmount || task.amount || 0;
+    showActualAmountDialog(expectedAmt, async (actualAmount) => {
+      await DataStore.update(taskId, { completed: true, completedAt: formatDateTime(new Date()), actualAmount, amount: actualAmount });
+      showToast('Completed!', 'success'); await renderAll();
     });
   }
 
@@ -1471,7 +1908,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="detail-field"><div class="detail-label">HO / CO</div><div class="detail-value">${esc(t.hoOrCo)}</div></div>
       ${staff}
       <div class="detail-field"><div class="detail-label">Issue Type</div><div class="detail-value">${esc(t.issueType)}</div></div>
-      <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">₹${(t.amount || 0).toLocaleString('en-IN')}</div></div>
+      <div class="detail-field"><div class="detail-label">Expected Amount</div><div class="detail-value">₹${(t.expectedAmount || t.amount || 0).toLocaleString('en-IN')}</div></div>
+      ${t.actualAmount != null ? `<div class="detail-field"><div class="detail-label">Actual Amount</div><div class="detail-value" style="font-weight:600">₹${t.actualAmount.toLocaleString('en-IN')}</div></div>` : ''}
+      ${t.amountStatus && t.amountStatus !== 'none' ? `<div class="detail-field"><div class="detail-label">Approval</div><div class="detail-value">${t.amountStatus === 'approved' ? '✅ Approved' : t.amountStatus === 'pending' ? '⏳ Pending' : '❌ Rejected'}${t.amountReviewedBy ? ' by ' + esc(t.amountReviewedBy) : ''}${t.amountRejectionNote ? '<div style="font-size:0.8rem;color:var(--danger);margin-top:2px">Note: ' + esc(t.amountRejectionNote) + '</div>' : ''}</div></div>` : ''}
       <div class="detail-field"><div class="detail-label">Status</div><div class="detail-value">${t.completed ? '✅ Completed' : '⏳ In Progress'}</div></div>
       <div class="detail-field"><div class="detail-label">Created By</div><div class="detail-value">${esc(t.createdBy)}</div></div>
       ${t.completedAt ? `<div class="detail-field"><div class="detail-label">Completed At</div><div class="detail-value">${esc(t.completedAt)}</div></div>` : ''}
