@@ -1938,7 +1938,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isPending = task.amountStatus === 'pending';
     const statusBadge = isPending ? '<span class="badge badge-amount-pending">⏳ Awaiting Approval</span>' : isRejected ? '<span class="badge badge-amount-rejected">❌ Rejected</span>' : isApproved ? '<span class="badge badge-success">✅ Approved</span>' : '';
     const expAmt = task.expectedAmount || task.amount || 0;
-    const amtField = expAmt > 0 ? `<div class="task-field"><span class="task-field-label">Expected Amount</span><span class="task-field-value">₹${expAmt.toLocaleString('en-IN')}</span></div>` : '';
+    const hasIncrease = isPending && task.actualAmount != null && task.actualAmount > expAmt;
+    let amtField = '';
+    if (hasIncrease) {
+      amtField = `<div class="task-amount-change"><div class="task-field"><span class="task-field-label">Amount Change — Awaiting Approval</span></div><div class="amt-change-row"><span class="amt-old">₹${expAmt.toLocaleString('en-IN')}</span><span class="amt-arrow">→</span><span class="amt-new">₹${task.actualAmount.toLocaleString('en-IN')}</span></div></div>`;
+    } else if (expAmt > 0) {
+      amtField = `<div class="task-field"><span class="task-field-label">Expected Amount</span><span class="task-field-value">₹${expAmt.toLocaleString('en-IN')}</span></div>`;
+    }
     const rejNote = isRejected && task.amountRejectionNote ? `<div class="task-field"><span class="task-field-label" style="color:var(--danger)">Rejection Note</span><span class="task-field-value" style="color:var(--danger)">${esc(task.amountRejectionNote)}</span></div>` : '';
     const completeBtn = isApproved ? `<button class="btn btn-success btn-sm" data-complete="${task.taskId}">✅ Complete</button>` : '';
     const editLabel = isRejected ? '🔄 Edit & Resubmit' : '✏️ Edit';

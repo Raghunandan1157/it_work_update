@@ -1879,6 +1879,19 @@ select.form-control[size] {
 .task-status-bar.rejected { background: #dc2626; }
 .task-status-bar.approved { background: #16a34a; }
 
+/* Amount change display on task cards */
+.task-amount-change {
+  background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px;
+  padding: 8px 12px; margin-top: 4px;
+}
+.task-amount-change .task-field-label { color: #92400e; font-weight: 600; font-size: 0.75rem; }
+.amt-change-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 4px;
+}
+.amt-old { color: #64748b; font-size: 0.95rem; text-decoration: line-through; }
+.amt-arrow { color: #92400e; font-weight: 700; }
+.amt-new { color: #dc2626; font-size: 1.05rem; font-weight: 700; }
+
 /* Nav badge pulse for pending approvals */
 #navBadgePendingApprovals { animation: badge-pulse 2s infinite; }
 @keyframes badge-pulse {
