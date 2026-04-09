@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Calculate totals
       const expectedTotal = tasks.reduce((s, t) => s + (t.expectedAmount || t.amount || 0), 0);
-      const actualTotal = tasks.filter(t => t.amountStatus === 'approved' && t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
+      const actualTotal = tasks.filter(t => t.amountStatus === 'approved').reduce((s, t) => s + (t.expectedAmount || t.amount || 0), 0);
       const paidTotal = tasks.filter(t => t.amountStatus === 'approved' && t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
 
       $('finExpectedTotal').textContent = '₹' + expectedTotal.toLocaleString('en-IN');
