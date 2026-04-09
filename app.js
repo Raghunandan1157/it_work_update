@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ─── COMPANY SELECTOR STATE ───
   let selectedCompany = null;
+  let ancillaryMode = false;
 
   // ─── COMMON DOM ──────────────────────────────────────────────────────────────
   const sidebar = $('sidebar'), sidebarToggle = $('sidebarToggle'), sidebarBackdrop = $('sidebarBackdrop');
@@ -49,6 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedCompany = btn.dataset.company;
+      // Deselect ancillary mode
+      ancillaryMode = false;
+      const ab = $('btnAncillary'); if (ab) ab.classList.remove('active');
       const err = $('companyError');
       if (err) err.classList.add('hidden');
 
@@ -1313,6 +1317,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Wizard
   fab.addEventListener('click', () => {
+    if (ancillaryMode) return; // handled by ancillary listener
     if (!selectedCompany) {
       // Shake the company selector card and show error
       const card = $('companySelector');
@@ -1345,13 +1350,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnComplete.addEventListener('click', handleComplete);
 
   // ─── ANCILLARY RESPONSIBILITIES ──────────────────────────────────────────
-  let ancillaryMode = false;
   const ancillaryBtn = $('btnAncillary');
   const ancOverlay = $('ancillaryOverlay');
 
   ancillaryBtn.addEventListener('click', () => {
     ancillaryMode = !ancillaryMode;
     ancillaryBtn.classList.toggle('active', ancillaryMode);
+    if (ancillaryMode) {
+      // Deselect company
+      selectedCompany = null;
+      document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('active'));
+    }
   });
 
   // Override FAB when ancillary mode is on
@@ -1382,20 +1391,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   ancOverlay.addEventListener('click', e => { if (e.target === ancOverlay) closeAncillaryModal(); });
 
   $('ancSaveBtn').addEventListener('click', async () => {
-    const company = $('ancCompany').value;
-    if (!company) { $('ancError').textContent = 'Select a company.'; return; }
+    const company = $('ancCompany').value.trim();
     const task = $('ancTask').value.trim();
     if (!task) { $('ancError').textContent = 'Task description is required.'; return; }
     $('ancSaveBtn').disabled = true;
     try {
       await db.from('ancillary_tasks').insert({
-        company,
+        company: company || null,
         timestamp: `${$('ancDate').value} ${$('ancTime').value}`,
         task_description: task,
         created_by: user.name
       });
       closeAncillaryModal();
-      showToast('Ancillary task saved.', 'success');
+      showToast('Additional task saved.', 'success');
     } catch (err) { $('ancError').textContent = 'Error: ' + err.message; }
     $('ancSaveBtn').disabled = false;
   });
