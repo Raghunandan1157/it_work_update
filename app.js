@@ -1355,24 +1355,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Override FAB when ancillary mode is on
-  const origFabClick = fab.onclick;
   fab.addEventListener('click', (e) => {
-    if (!ancillaryMode) return; // let normal handler run
+    if (!ancillaryMode) return;
     e.stopImmediatePropagation();
-    if (!selectedCompany) {
-      const card = $('companySelector');
-      const err = $('companyError');
-      if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-      if (err) err.classList.remove('hidden');
-      setTimeout(() => { if (err) err.classList.add('hidden'); }, 3000);
-      return;
-    }
     openAncillaryModal();
   });
 
   function openAncillaryModal() {
     const now = new Date();
-    $('ancCompany').value = selectedCompany;
+    $('ancCompany').value = selectedCompany || '';
     $('ancDate').value = now.toISOString().split('T')[0];
     $('ancTime').value = now.toTimeString().slice(0, 8);
     $('ancTask').value = '';
@@ -1391,12 +1382,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   ancOverlay.addEventListener('click', e => { if (e.target === ancOverlay) closeAncillaryModal(); });
 
   $('ancSaveBtn').addEventListener('click', async () => {
+    const company = $('ancCompany').value;
+    if (!company) { $('ancError').textContent = 'Select a company.'; return; }
     const task = $('ancTask').value.trim();
     if (!task) { $('ancError').textContent = 'Task description is required.'; return; }
     $('ancSaveBtn').disabled = true;
     try {
       await db.from('ancillary_tasks').insert({
-        company: $('ancCompany').value,
+        company,
         timestamp: `${$('ancDate').value} ${$('ancTime').value}`,
         task_description: task,
         created_by: user.name
