@@ -1396,14 +1396,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!task) { $('ancError').textContent = 'Task description is required.'; return; }
     $('ancSaveBtn').disabled = true;
     try {
-      await db.from('ancillary_tasks').insert({
-        company: company || null,
-        timestamp: `${$('ancDate').value} ${$('ancTime').value}`,
-        task_description: task,
-        created_by: user.name
+      const taskId = await generateTaskId();
+      const timestamp = `${$('ancDate').value} ${$('ancTime').value}`;
+      await DataStore.add({
+        taskId,
+        timestamp,
+        branch: company || 'Additional',
+        hoOrCo: user.hoOrCo || 'CO',
+        staffName: null,
+        staffId: null,
+        staffDesignation: null,
+        issueType: 'Software',
+        issueCategory: 'Other',
+        issueDescription: task,
+        solution: 'Additional Responsibility',
+        detailedDescription: null,
+        amount: 0,
+        expectedAmount: 0,
+        actualAmount: null,
+        amountStatus: 'approved',
+        completed: false,
+        completedAt: null,
+        createdBy: user.name
       });
       closeAncillaryModal();
       showToast('Additional task saved.', 'success');
+      await renderAll();
     } catch (err) { $('ancError').textContent = 'Error: ' + err.message; }
     $('ancSaveBtn').disabled = false;
   });
