@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Calculate totals
       const expectedTotal = tasks.reduce((s, t) => s + (t.expectedAmount || t.amount || 0), 0);
-      const actualTotal = tasks.filter(t => t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
+      const actualTotal = tasks.filter(t => t.amountStatus === 'approved' && t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
       const paidTotal = tasks.filter(t => t.amountStatus === 'approved' && t.actualAmount != null).reduce((s, t) => s + t.actualAmount, 0);
 
       $('finExpectedTotal').textContent = '₹' + expectedTotal.toLocaleString('en-IN');
@@ -1516,6 +1516,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Only show Complete button if admin has approved
     $('editCompleteBtn').classList.toggle('hidden', task.amountStatus !== 'approved' || task.completed);
+    // Show resubmit label on save button if rejected
+    $('editSaveBtn').textContent = task.amountStatus === 'rejected' ? '🔄 Resubmit for Approval' : '💾 Save';
 
     editOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1571,9 +1573,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
     try {
       const editData = await getEditFormData();
+      // If task was rejected, resubmit for approval
+      const currentTask = await DataStore.getById(editingId);
+      if (currentTask && currentTask.amountStatus === 'rejected') {
+        editData.amountStatus = 'pending';
+        editData.amountRejectionNote = null;
+        editData.amountReviewedBy = null;
+        editData.amountReviewedAt = null;
+      }
       await DataStore.update(editingId, editData);
       if (editData.issueDescription) { await IssueHistory.save(user.id, editData.issueDescription, editData.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, editData.issueCategory); }
-      showToast('Updated.', 'success');
+      const msg = editData.amountStatus === 'pending' ? 'Resubmitted for approval.' : 'Updated.';
+      showToast(msg, 'success');
       closeEdit(); await renderAll();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
     saving = false; $('editSaveBtn').disabled = false; $('editCompleteBtn').disabled = false;
