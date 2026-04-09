@@ -1850,6 +1850,13 @@ select.form-control[size] {
 .amt-under { background: #f0fdf4; color: #16a34a; }
 .amt-equal { background: #f0f9ff; color: #64748b; }
 
+/* Re-approval highlight */
+.approval-card.re-approval { border-color: #fbbf24; border-width: 2px; }
+.re-approval-banner {
+  background: #fef3c7; color: #92400e; font-size: 0.8rem; font-weight: 600;
+  padding: 6px 12px; border-radius: 6px; margin-bottom: 12px; text-align: center;
+}
+
 /* Approval action buttons */
 .approval-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .approval-meta { font-size: 0.8rem; color: var(--text-muted); text-align: right; }

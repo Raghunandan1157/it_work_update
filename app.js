@@ -496,6 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('approvalsGrid').innerHTML = tasks.map(t => {
         const expected = (t.expectedAmount || 0);
         const actual = (t.actualAmount || 0);
+        const isReApproval = t.actualAmount != null && t.actualAmount > expected;
         const diff = actual - expected;
         const diffClass = diff > 0 ? 'amt-over' : diff < 0 ? 'amt-under' : 'amt-equal';
         const diffText = diff > 0 ? `+₹${diff.toLocaleString('en-IN')}` : diff < 0 ? `-₹${Math.abs(diff).toLocaleString('en-IN')}` : 'No change';
@@ -509,7 +510,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           actions = `<div class="approval-meta">Rejected by ${esc(t.amountReviewedBy || '—')}${t.amountRejectionNote ? ' — ' + esc(t.amountRejectionNote) : ''}</div>`;
         }
 
-        return `<div class="approval-card">
+        return `<div class="approval-card${isReApproval ? ' re-approval' : ''}">
+          ${isReApproval ? '<div class="re-approval-banner">⚠️ Re-approval — Actual amount exceeds expected</div>' : ''}
           <div class="approval-card-header">
             <div><span class="task-card-id">${esc(t.taskId)}</span><span class="badge ${t.hoOrCo === 'HO' ? 'badge-danger' : 'badge-success'}" style="margin-left:8px">${esc(t.hoOrCo)}</span></div>
             <span class="approval-date">${esc(formatDateDMY(extractDate(t.timestamp)))}</span>
@@ -1598,12 +1600,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       saving = true; $('editSaveBtn').disabled = true; $('editCompleteBtn').disabled = true;
       try {
         const updates = await getEditFormData();
-        updates.completed = true;
-        updates.completedAt = formatDateTime(new Date());
-        updates.actualAmount = actualAmount;
-        updates.amount = actualAmount;
-        await DataStore.update(editingId, updates);
-        showToast('Completed!', 'success');
+        if (actualAmount > expectedAmt) {
+          updates.actualAmount = actualAmount;
+          updates.amount = actualAmount;
+          updates.amountStatus = 'pending';
+          updates.amountReviewedBy = null;
+          updates.amountReviewedAt = null;
+          await DataStore.update(editingId, updates);
+          showToast('Actual exceeds expected. Re-sent to admin for approval.', 'warning');
+        } else {
+          updates.completed = true;
+          updates.completedAt = formatDateTime(new Date());
+          updates.actualAmount = actualAmount;
+          updates.amount = actualAmount;
+          await DataStore.update(editingId, updates);
+          showToast('Completed!', 'success');
+        }
         closeEdit(); await renderAll();
       } catch (err) { showToast('Error: ' + err.message, 'error'); }
       saving = false; $('editSaveBtn').disabled = false; $('editCompleteBtn').disabled = false;
@@ -1736,12 +1748,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       saving = true; btnSave.disabled = true; btnComplete.disabled = true;
       try {
         const d = await buildTaskFromForm();
-        d.completed = true; d.completedAt = formatDateTime(new Date());
         d.actualAmount = actualAmount;
         d.amount = actualAmount;
+        if (actualAmount > expectedAmt) {
+          d.completed = false; d.completedAt = null;
+          d.amountStatus = 'pending'; d.amountReviewedBy = null; d.amountReviewedAt = null;
+        } else {
+          d.completed = true; d.completedAt = formatDateTime(new Date());
+        }
         if (d.issueDescription) { await IssueHistory.save(user.id, d.issueDescription, d.issueCategory); issueHistoryCache = await IssueHistory.get(user.id, d.issueCategory); }
         if (state.editingTaskId) await DataStore.update(state.editingTaskId, d); else await DataStore.add(d);
-        closeModal(); showToast('Completed!', 'success'); await renderAll();
+        closeModal();
+        if (actualAmount > expectedAmt) showToast('Actual exceeds expected. Re-sent to admin for approval.', 'warning');
+        else showToast('Completed!', 'success');
+        await renderAll();
       } catch (err) { showToast('Error: ' + err.message, 'error'); }
       saving = false; btnSave.disabled = false; btnComplete.disabled = false;
     });
@@ -1912,8 +1932,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (task.amountStatus !== 'approved') { showToast('Task must be approved by admin before completing.', 'warning'); return; }
     const expectedAmt = task.expectedAmount || task.amount || 0;
     showActualAmountDialog(expectedAmt, async (actualAmount) => {
-      await DataStore.update(taskId, { completed: true, completedAt: formatDateTime(new Date()), actualAmount, amount: actualAmount });
-      showToast('Completed!', 'success'); await renderAll();
+      if (actualAmount > expectedAmt) {
+        await DataStore.update(taskId, { actualAmount, amount: actualAmount, amountStatus: 'pending', amountReviewedBy: null, amountReviewedAt: null });
+        showToast('Actual exceeds expected. Re-sent to admin for approval.', 'warning'); await renderAll();
+      } else {
+        await DataStore.update(taskId, { completed: true, completedAt: formatDateTime(new Date()), actualAmount, amount: actualAmount });
+        showToast('Completed!', 'success'); await renderAll();
+      }
     });
   }
 
